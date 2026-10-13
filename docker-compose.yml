@@ -1,0 +1,53 @@
+services:
+  api:
+    build: .
+    container_name: ecoda_hello_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Dans le réseau Docker, les services se joignent par leur nom (db, redis), pas par localhost
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ecoda_user}:${POSTGRES_PASSWORD:-changeme_dev_only}@db:5432/${POSTGRES_DB:-ecoda}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: ecoda_hello_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ecoda}
+      POSTGRES_USER: ${POSTGRES_USER:-ecoda_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_dev_only}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ecoda_hello_pgdata:/var/lib/postgresql/data
+      # Scripts exécutés une seule fois, à la création du volume
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecoda_user} -d ${POSTGRES_DB:-ecoda}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecoda_hello_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ecoda_hello_pgdata:
