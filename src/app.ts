@@ -34,15 +34,45 @@ app.get("/get/hello/name", (req, res) => {
     res.json({message:blabla});
 });
 
+app.get("/lol", (req, res) => {
+    res.json({ message: "lol ça va" });
+});
+
 app.get("/hello/:name", (req, res) => {
   
     const blabla =`Bonjour ${req.params.name}`;
     res.json({message:blabla});
 });
 
+const requireApikey = (req: Request, res: Response, next: NextFunction) => {
+    next();
+};
+
+app.get("/admin", requireApikey,(req, res) => {  
+
+    const response = "bienvenue admin";
+    res.json({message:response});
+ });
+
+
+ 
+app.get("/items/:id", requireApikey,(req, res) => {  
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({error: "Invalid id"});
+        return;
+    }
+    const resp = `id: id`
+    res.json({message:resp});
+ });
+
+
 app.use((req, res) => {
     res.status(404).json({ error: "Not found" });
-});
+});{}
+
+
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     console.error(err);

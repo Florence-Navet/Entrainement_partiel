@@ -1,59 +1,240 @@
-# Fiche - Choisir le bon code HTTP
+# Jour 2 - Les middlewares Express
 
-## La méthode : trois questions, dans l'ordre
+- **Objet :** séance d'entraînement n°2 pour le partiel EC04, au format des épreuves Markdown de CODA.
+- **Durée indicative :** 20 min (5 min de lecture + 15 min de questions)
+- **Modalités :** lis d'abord « L'essentiel à retenir », puis réponds **sans regarder** cette partie.
+- **Projet pour la partie code :** le projet ouvert dans ton éditeur **et** dans ton terminal (vérifie que c'est le même dossier), fichier `src/app.ts`
 
-Pour chaque requête, je pose ces trois questions une après l'autre. Dès qu'une réponse est « non », j'ai mon code.
+---
 
-1. **La demande est-elle bien écrite ?** (l'id est un entier positif, le titre est présent…)
-   → Non : **400 Bad Request**
-2. **Ce que je cherche existe-t-il ?**
-   → Non : **404 Not Found**
-3. **Tout va bien : qu'est-ce que j'ai fait ?**
-   - j'ai lu → **200 OK**
-   - j'ai créé → **201 Created**
-   - j'ai supprimé, rien à renvoyer → **204 No Content**
+## Comment remplir ce document
 
-## L'exemple Ecoda
+| Type de question | Comment répondre |
+| --- | --- |
+| **QCU** (une seule bonne réponse) | Supprime les lignes des propositions incorrectes. Il ne doit rester qu'**une seule** ligne. |
+| **QCM** (plusieurs réponses possibles) | Supprime les lignes des propositions incorrectes. Il reste uniquement les bonnes réponses. |
+| **Ouverte** | Rédige ta réponse dans le bloc `> Réponse :` sous la question. |
+| **Code** | Écris ton code dans le bloc de code prévu, puis teste-le dans le projet. |
+| **Lecture de code** | Réponds à chaque sous-question dans les blocs `> Réponse :`. |
 
-Les défis (« challenges ») de la base :
+---
 
-| id | Défi | Catégorie |
-| --- | --- | --- |
-| 1 | Se déplacer à vélo | carbone |
-| 2 | Repas végétarien | alimentation |
-| 3 | Faire du covoiturage | carbone |
+## Section 0 - Révision du jour 1 (3 min - 4 pts)
 
-| Requête | Ça se lit | Code | Pourquoi |
-| --- | --- | --- | --- |
-| `GET /challenges` | donne-moi tous les défis | 200 | lecture réussie |
-| `GET /challenges/3` | donne-moi le défi n°3 | 200 | il existe |
-| `GET /challenges/999` | donne-moi le défi n°999 | 404 | il n'existe pas |
-| `GET /challenges/abc` | donne-moi le défi n°abc | 400 | `abc` n'est pas un numéro |
-| `GET /challenges/-5` | donne-moi le défi n°-5 | 400 | un id est toujours positif |
-| `GET /challenges?category=carbone` | donne-moi les défis carbone | 200 | renvoie les défis 1 et 3 |
-| `GET /challenges?category=sport` | donne-moi les défis sport | 200 | liste vide `[]`, pas une erreur |
-| `POST /challenges` valide | crée un défi | 201 | création réussie |
-| `POST /challenges` sans titre | crée un défi | 400 | il manque une donnée |
+**Q0.1 (QCU, 1 pt) `[CP3]`**
+Quel verbe HTTP **remplace une ressource en entier** ?
 
-## Les pièges à retenir
 
-- **Une liste vide, c'est 200**, pas 404. La question était bonne, il n'y a juste aucun résultat.
-- **404**, c'est quand je demande **un** élément précis qui n'existe pas.
-- **400**, c'est quand la demande est mal écrite. Je n'ai même pas besoin de chercher en base.
-- **405**, c'est quand l'adresse existe mais pas avec ce verbe (`POST` sur une route qui n'accepte que `GET`). Express ne le fait pas tout seul : il répond 404. Symfony le fait. À l'examen, la bonne réponse est 405.
-- **500**, c'est toujours la faute du serveur : le code a planté. Ce n'est jamais une réponse normale.
+- b) PUT
 
-## Le vocabulaire d'une adresse
 
-| Morceau | Exemple | À quoi ça sert |
-| --- | --- | --- |
-| le verbe | `GET` | ce que je veux faire (lire, créer…) |
-| le chemin | `/challenges` | la ressource |
-| la case `:id` | `/challenges/3` | un élément précis, lu avec `req.params.id` |
-| après le `?` | `?category=carbone` | un filtre, lu avec `req.query.category` |
+**Q0.2 (QCU, 1 pt) `[CP3]`**
+Un `DELETE /challenges/3` a réussi, il n'y a rien à renvoyer. Quel code ?
 
-## Les familles de codes
+- c) 204 No Content
 
-- **2xx** : c'est bon
-- **4xx** : c'est la faute du client
-- **5xx** : c'est la faute du serveur
+
+**Q0.3 (QCU, 1 pt) `[CP3]`**
+La route `GET /challenges` existe. Un client envoie `PUT /challenges`. Quel code HTTP est le plus juste ?
+
+
+- d) 201 Created
+
+**Q0.4 (Ouverte, 1 pt) `[CP3]`**
+`GET /challenges?category=inconnue` renvoie une liste vide. 200 ou 404 ? Pourquoi ?
+
+> **Réponse :** 404 puisqu'il ne trouve rien
+
+---
+
+## L'essentiel à retenir (5 min)
+
+**Un middleware**, c'est une fonction qui s'exécute **avant** la route. Comme un vigile à l'entrée d'une salle.
+
+```ts
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.originalUrl}`);
+    next();
+});
+```
+
+Il reçoit **trois** choses :
+
+- `req` : la requête ;
+- `res` : la réponse ;
+- **`next`** : la fonction qui dit « c'est bon, passe à la suite ».
+
+**Un middleware fait toujours l'une de ces deux choses :**
+
+1. il **laisse passer** : `next()` ;
+2. il **bloque** et répond lui-même : `res.status(401).json(...)`, **sans** appeler `next()`.
+
+S'il ne fait **ni l'un ni l'autre**, la requête reste bloquée : le client attend pour toujours.
+
+**Deux façons de le poser :**
+
+| Écriture | Le middleware s'applique à |
+| --- | --- |
+| `app.use(monMiddleware)` | **toutes** les requêtes qui arrivent après cette ligne |
+| `app.get("/secret", monMiddleware, (req, res) => { ... })` | **seulement** cette route |
+
+**L'ordre compte :** Express lit le fichier de haut en bas. Un `app.use` placé après une route ne s'applique pas à cette route.
+
+**`res.locals`** : une boîte liée à **une seule** requête. Un middleware y range une information, la route la relit.
+
+```ts
+res.locals.id = 3;      // dans le middleware
+res.locals.id           // dans la route : 3
+```
+
+---
+
+## Section 1 - Comprendre (5 min - 6 pts)
+
+**Q1.1 (QCU, 1 pt) `[CP3]`**
+Dans un middleware, à quoi sert `next()` ?
+
+
+- b) à passer au middleware ou à la route suivante
+
+
+**Q1.2 (QCU, 1 pt) `[CP3]`**
+Un middleware n'appelle ni `next()` ni `res.json()`. Que se passe-t-il ?
+
+
+- c) la requête reste bloquée, le client attend
+
+
+**Q1.3 (QCM, 2 pts) `[CP3]`**
+Quelles affirmations sur `res.locals` sont vraies ?
+
+
+- c) un middleware peut y ranger une information pour la route
+
+**Q1.4 (QCU, 2 pts) `[CP3]`**
+On veut qu'un middleware `requireApiKey` protège **uniquement** la route `POST /challenges`. Quelle écriture choisir ?
+
+
+- b) `app.post("/challenges", requireApiKey, (req, res) => { ... });`
+
+
+---
+
+## Section 2 - Lire du code (4 min - 5 pts)
+
+**Q2.1 (Lecture de code, 5 pts) `[CP3]`**
+
+```ts
+app.get("/ping", (req, res) => {
+    res.json({ message: "pong" });
+});
+
+app.use((req, res, next) => {
+    console.log("requête reçue");
+    next();
+});
+
+app.get("/hello", (req, res) => {
+    res.json({ message: "hello" });
+});
+
+app.use((req, res) => {
+    res.status(404).json({ error: "Not found" });
+});
+```
+
+a) On appelle `GET /ping`. Le message « requête reçue » s'affiche-t-il dans le terminal ? Pourquoi ?
+
+b) On appelle `GET /hello`. Le message s'affiche-t-il ? Pourquoi ? 
+c) On appelle `GET /bonjour`. Que reçoit le client ? Le message s'affiche-t-il ? 
+
+> **Réponse a) :** non il s'affiche 'message: pong" c'est le corps du json
+>
+> **Réponse b) :** oui le message s'affiche
+>
+> **Réponse c) :** 
+
+---
+
+## Section 3 - Écrire des middlewares (10 min - 10 pts)
+
+> Écris le code ici, **puis** recopie-le dans `src/app.ts` et teste avec `curl`. Rappel : tout ce que tu ajoutes va **avant** les deux blocs `app.use(...)` du 404 et des erreurs.
+
+**Q3.1 (Code, 3 pts) `[CP3]`**
+Écris un middleware posé avec `app.use`, **tout en haut** des routes, qui affiche dans le terminal la méthode et l'adresse de chaque requête, par exemple `GET /ping`.
+
+```ts
+app.get("/lol", (req, res) => {
+    res.json({ message: "lol ça va" });
+});
+
+```
+
+Test : appelle `curl http://localhost:3000/ping`, puis regarde le terminal de `npm run dev`.
+
+**Q3.2 (Code, 4 pts) `[CP3]`**
+Écris un middleware `requireApiKey` qui :
+- répond `401` avec `{ "error": "Unauthorized" }` si l'en-tête `x-api-key` ne vaut pas `secret123` ;
+- sinon laisse passer.
+
+Puis protège une nouvelle route `GET /admin` qui répond `{ "message": "bienvenue admin" }`.
+
+```ts
+const requireApikey = (req: Request, res: Response, next: NextFunction) => {
+    next();
+};
+
+app.get("/admin", requireApikey,(req, res) => {  
+
+    const response = "bienvenue admin";
+    res.json({message:response});
+ });
+
+```
+
+Test :
+
+```bash
+curl -i http://localhost:3000/admin
+curl -i -H "x-api-key: secret123" http://localhost:3000/admin
+```
+
+Attendu : `401`, puis `200`.
+
+**Aide** : la valeur de l'en-tête se lit avec `req.headers["x-api-key"]`.
+
+**Q3.3 (Code, 3 pts) `[CP3]`**
+Écris un middleware `parseIdParam` qui :
+- lit `req.params.id` et le transforme en nombre ;
+- répond `400` avec `{ "error": "Invalid id" }` si ce n'est pas un entier positif ;
+- sinon range le nombre dans `res.locals.id` et laisse passer.
+
+Utilise-le sur une route `GET /items/:id` qui répond `{ "id": <le nombre> }`.
+
+```ts
+app.get("/items/:id", requireApikey,(req, res) => {  
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({error: "Invalid id"});
+        return;
+    }
+    const resp = `id: id`
+    res.json({message:resp});
+ });
+```
+
+Test :
+
+```bash
+curl http://localhost:3000/items/7
+curl -i http://localhost:3000/items/abc
+```
+
+Attendu : `{"id":7}`, puis un `400`.
+
+**Aide** : `Number.isInteger(id)` vaut `true` seulement pour un entier.
+
+---
+
+*Fin du jour 2 (25 pts). Envoie-moi tes réponses : on corrige ensemble, puis on passe au jour 3.*
