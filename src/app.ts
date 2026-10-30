@@ -1,8 +1,11 @@
 import express, { NextFunction, Request, Response } from "express";
 import db from "./config/db";
 import redis from "./config/redis";
+import { email, z } from "zod";
 
 const app = express();
+
+
 
 // 1. L'API répond (aucune dépendance)
 app.get("/", (req, res) => {
@@ -23,6 +26,8 @@ app.get("/ping", (req, res) => {
 
     // res.json({ "message": "pong" });
 });
+
+
 
 app.get("/secret", async(req, res) => {
      res.status(401).json({ error: "Unauthorized" });
@@ -68,9 +73,53 @@ app.get("/items/:id", requireApikey,(req, res) => {
  });
 
 
+app.use(express.json());
+
+app.post("/notes", (req, res) => {
+    const result = NoteSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400).json({ errors: result.error.issues });
+        return;
+    }
+
+    const note = { id: notes.length + 1, text: result.data.text };
+    notes.push(note);
+    res.status(201).json(note);
+});
+
+app.get("/notes", (req, res) => {
+    const response = "la liste des notes est :";
+    
+    res.json({ message: response, notes: notes });
+});
+
+const users = [];
+
+app.post("/users", (req, res) => {
+    const user = {
+        id: users.length + 1,
+        email: req.body.email,
+        password: req.body.password,
+    };
+
+    users.push(user);
+
+    const utilisateur = {id: user.id, email: user.email};
+    res.status(201).json(utilisateur);
+});
+
+
+// z.string().min(1).max(140)
+
 app.use((req, res) => {
     res.status(404).json({ error: "Not found" });
 });{}
+
+const notes : {id:number; text: string} [] = [];
+
+const NoteSchema = z.object({
+    text: z.string().min(1).max(140),
+});
 
 
 

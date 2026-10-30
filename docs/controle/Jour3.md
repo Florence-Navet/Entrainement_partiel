@@ -24,18 +24,14 @@
 **Q0.1 (QCU, 1 pt) `[CP3]`**
 `GET /challenges?category=sport` ne trouve aucun défi. Quel code ?
 
-- a) 200 OK, avec une liste vide
-- b) 204 No Content
 - c) 404 Not Found
-- d) 400 Bad Request
+
 
 **Q0.2 (QCU, 1 pt) `[CP3]`**
 La route `GET /challenges` existe. Un client envoie `DELETE /challenges`. Quel code ?
 
-- a) 204 No Content
-- b) 404 Not Found
 - c) 405 Method Not Allowed
-- d) 500 Internal Server Error
+
 
 **Q0.3 (Lecture de code, 3 pts) `[CP3]`**
 
@@ -53,10 +49,9 @@ app.get("/ping", (req, res) => {
 a) Que reçoit le client pour `GET /ping` ? Pourquoi ?
 b) Comment corriger ?
 
-> **Réponse a) :** _(écris ta réponse ici)_
+> **Réponse a) :** il reçoit un message pong
 >
-> **Réponse b) :** _(écris ta réponse ici)_
-
+> **Réponse b) :** const reponse = "ping";
 ---
 
 ## L'essentiel à retenir (5 min)
@@ -143,39 +138,36 @@ res.status(201).json({ id: user.id, email: user.email });
 **Q1.1 (QCU, 1 pt) `[CP3]`**
 Dans une route `POST`, où se trouvent les données envoyées en JSON par le client ?
 
-- a) `req.params`
-- b) `req.query`
+
 - c) `req.body`
-- d) `res.locals`
+
 
 **Q1.2 (QCU, 1 pt) `[CP3]`**
 On a oublié `app.use(express.json());`. Que vaut `req.body` ?
 
-- a) un objet vide `{}`
+
 - b) `undefined`
-- c) le texte brut du JSON
-- d) `null`
+
 
 **Q1.3 (QCU, 1 pt) `[CP3]`**
 Le client envoie `{ "text": "" }` alors que le texte doit faire au moins 1 caractère. Quel code ?
 
-- a) 200 OK
-- b) 201 Created
+
 - c) 400 Bad Request
-- d) 404 Not Found
+-
 
 **Q1.4 (QCM, 2 pts) `[CP3, CP8]`**
 Pour la réponse de `POST /users`, quels champs peut-on renvoyer au client ?
 
 - a) `id`
 - b) `email`
-- c) `password`
-- d) `createdAt`
+
 
 **Q1.5 (Ouverte, 1 pt) `[CP3]`**
 Qu'est-ce qu'un DTO, en une phrase ?
 
-> **Réponse :** _(écris ta réponse ici)_
+
+> **Réponse :** C'est un objet dans laquelle on decide d'envoyer certains champs dont on a besoin
 
 ---
 
@@ -201,11 +193,11 @@ a) Ce code oublie de vérifier les données. Donne un exemple de corps invalide 
 b) Quelle donnée sensible part dans la réponse ? Réécris la dernière ligne pour l'éviter.
 c) Le mot de passe est enregistré tel quel dans `users`. Quel est le problème, et quel outil utilise-t-on normalement ?
 
-> **Réponse a) :** _(écris ta réponse ici)_
+> **Réponse a) :** un utilisateur deja enregistre / n'importe quel mot de passe
 >
-> **Réponse b) :** _(écris ta réponse ici)_
+> **Réponse b) :** le mot de passe en clair
 >
-> **Réponse c) :** _(écris ta réponse ici)_
+> **Réponse c) :** on chiffre le mot de passe , par exemple avecc jwt
 
 ---
 
@@ -221,7 +213,25 @@ c) Le mot de passe est enregistré tel quel dans `users`. Quel est le problème,
 3. Crée `GET /notes` qui renvoie toute la liste.
 
 ```ts
-// écris ton code ici
+app.post("/notes", (req, res) => {
+    const result = NoteSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400).json({ errors: result.error.issues });
+        return;
+    }
+
+    const note = { id: notes.length + 1, text: result.data.text };
+    notes.push(note);
+    res.status(201).json(note);
+});
+```
+
+```ts
+app.get("/notes", (req, res) => {
+    const response = "la liste des notes est :";
+    
+    res.json({ message: response, notes: notes });
+});
 ```
 
 Test :
@@ -237,7 +247,23 @@ Attendu : **201** avec `{"id":1,"text":"bonjour"}`, puis `[{"id":1,"text":"bonjo
 Dans `POST /notes`, avant d'ajouter la note, réponds **400** avec `{ "error": "text is required" }` si `text` est absent ou vide. Pense au `return`.
 
 ```ts
-// écris ton code ici
+app.post("/notes", (req, res) => {
+    const result = NoteSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400).json({ errors: result.error.issues });
+        return;
+    }
+
+    const note = { id: notes.length + 1, text: result.data.text };
+    notes.push(note);
+    res.status(201).json(note);
+});
+
+app.get("/notes", (req, res) => {
+    const response = "la liste des notes est :";
+    
+    res.json({ message: response, notes: notes });
+});
 ```
 
 Test :
@@ -254,7 +280,15 @@ Remplace la vérification de la Q3.2 par un schéma Zod `NoteSchema` : `text` do
 Installation : `npm install zod`, puis en haut de `app.ts` : `import { z } from "zod";`
 
 ```ts
-// écris ton code ici
+app.use((req, res) => {
+    res.status(404).json({ error: "Not found" });
+});{}
+
+const notes : {id:number; text: string} [] = [];
+
+const NoteSchema = z.object({
+    text: z.string().min(1).max(140),
+});
 ```
 
 Test :
@@ -270,7 +304,19 @@ Attendu : deux **400**, avec la liste des erreurs.
 Crée une liste `users` et une route `POST /users` qui reçoit `{ "email", "password" }`, ajoute l'utilisateur dans la liste (avec un `id`), et répond **201** avec **seulement** `{ id, email }`. Le mot de passe ne doit **jamais** apparaître dans la réponse.
 
 ```ts
-// écris ton code ici
+app.post("/users", (req, res) => {
+    const user = {
+        id: users.length + 1,
+        email: req.body.email,
+        password: req.body.password,
+    };
+
+    users.push(user);
+
+    const utilisateur = {id: user.id, email: user.email};
+    res.status(201).json(utilisateur);
+});
+
 ```
 
 Test :
