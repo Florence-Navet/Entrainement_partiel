@@ -9,13 +9,13 @@
 
 ## Comment remplir ce document
 
-| Type de question | Comment répondre |
-| --- | --- |
-| **QCU** (une seule bonne réponse) | Supprime les lignes des propositions incorrectes. Il ne doit rester qu'**une seule** ligne. |
-| **QCM** (plusieurs réponses possibles) | Supprime les lignes des propositions incorrectes. Il reste uniquement les bonnes réponses. |
-| **Ouverte** | Rédige ta réponse dans le bloc `> Réponse :` sous la question. |
-| **Code** | Écris ton code dans le bloc de code prévu, puis teste-le dans le projet. |
-| **Lecture de code** | Réponds à chaque sous-question dans les blocs `> Réponse :`. |
+| Type de question                       | Comment répondre                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **QCU** (une seule bonne réponse)      | Supprime les lignes des propositions incorrectes. Il ne doit rester qu'**une seule** ligne. |
+| **QCM** (plusieurs réponses possibles) | Supprime les lignes des propositions incorrectes. Il reste uniquement les bonnes réponses.  |
+| **Ouverte**                            | Rédige ta réponse dans le bloc `> Réponse :` sous la question.                              |
+| **Code**                               | Écris ton code dans le bloc de code prévu, puis teste-le dans le projet.                    |
+| **Lecture de code**                    | Réponds à chaque sous-question dans les blocs `> Réponse :`.                                |
 
 ---
 
@@ -27,30 +27,21 @@
 `GET /notes` alors qu'aucune note n'a encore été créée. Quel code ?
 
 - a) 200 OK, avec `[]`
-- b) 204 No Content
-- c) 404 Not Found
-- d) 400 Bad Request
 
 **Q0.2 (QCU, 1 pt) `[CP3]`**
 `GET /notes/42` alors que la note n°42 n'existe pas. Quel code ?
 
-- a) 200 OK, avec `[]`
-- b) 400 Bad Request
 - c) 404 Not Found
-- d) 500 Internal Server Error
 
 **Q0.3 (QCU, 1 pt) `[CP3]`**
 Dans `app.ts`, la route `GET /admin` est écrite **sous** le bloc du 404. Que reçoit le client qui appelle `GET /admin` ?
 
-- a) 200 avec la réponse de `/admin`
 - b) 404 Not Found
-- c) 500 Internal Server Error
-- d) rien, la requête reste bloquée
 
 **Q0.4 (Ouverte, 2 pts) `[CP3]`**
 Explique avec tes mots pourquoi `GET /notes` vide répond 200, mais `GET /notes/42` répond 404.
 
-> **Réponse :** _(écris ta réponse ici)_
+> **Réponse :** 200 car ça existe mais il ne renvoit rien donc il dit vide poiur l'instant mais 42 n'existant pas un 404 la route n'existe pas
 
 ---
 
@@ -58,11 +49,11 @@ Explique avec tes mots pourquoi `GET /notes` vide répond 200, mais `GET /notes/
 
 ### Trois mots à ne pas confondre
 
-| Mot | Ce que c'est | Réversible ? | Exemple |
-| --- | --- | --- | --- |
-| **Hacher** | transformer en une empreinte | **non**, jamais | bcrypt, pour les mots de passe |
-| **Chiffrer** | cacher avec une clé | **oui**, avec la clé | HTTPS |
-| **Jeton (JWT)** | un « bracelet » prouvant qu'on s'est connecté | sans objet | donné après la connexion |
+| Mot             | Ce que c'est                                  | Réversible ?         | Exemple                        |
+| --------------- | --------------------------------------------- | -------------------- | ------------------------------ |
+| **Hacher**      | transformer en une empreinte                  | **non**, jamais      | bcrypt, pour les mots de passe |
+| **Chiffrer**    | cacher avec une clé                           | **oui**, avec la clé | HTTPS                          |
+| **Jeton (JWT)** | un « bracelet » prouvant qu'on s'est connecté | sans objet           | donné après la connexion       |
 
 ### bcrypt : stocker un mot de passe
 
@@ -111,7 +102,11 @@ import jwt from "jsonwebtoken";
 const JWT_SECRET = "un-secret-pour-s-entrainer";
 
 // signer (à la connexion)
-const token = jwt.sign({ sub: String(user.id), email: user.email }, JWT_SECRET, { expiresIn: 3600 });
+const token = jwt.sign(
+  { sub: String(user.id), email: user.email },
+  JWT_SECRET,
+  { expiresIn: 3600 },
+);
 
 // vérifier (à chaque requête protégée) : lance une erreur si le jeton est faux ou expiré
 const payload = jwt.verify(token, JWT_SECRET);
@@ -140,47 +135,31 @@ C'est le même principe que `requireApiKey` du jour 2, mais avec un vrai jeton :
 Pour enregistrer un mot de passe, on utilise :
 
 - a) un JWT
-- b) un hash bcrypt
-- c) un chiffrement réversible
-- d) le mot de passe en clair
 
 **Q1.2 (QCU, 1 pt) `[CP3]`**
 Pourquoi le même mot de passe donne-t-il un hash bcrypt différent à chaque fois ?
 
 - a) parce que bcrypt ajoute un sel aléatoire
-- b) parce que le coût change à chaque fois
-- c) parce que bcrypt utilise la date du jour
-- d) c'est un bug
 
 **Q1.3 (QCU, 1 pt) `[CP3]`**
 De quoi se compose un JWT ?
 
-- a) un email, un mot de passe et une date
 - b) un header, un payload et une signature
-- c) une clé publique et une clé privée
-- d) un hash bcrypt et un sel
 
 **Q1.4 (QCM, 2 pts) `[CP3, CP8]`**
 Que peut-on mettre dans le **payload** d'un JWT ?
 
 - a) l'id de l'utilisateur (`sub`)
 - b) son email
-- c) son mot de passe
-- d) la date d'expiration (`exp`)
-- e) le hash de son mot de passe
 
 **Q1.5 (QCU, 1 pt) `[CP3]`**
 Dans quel en-tête le client envoie-t-il son jeton ?
 
-- a) `x-api-key: <jeton>`
-- b) `Content-Type: <jeton>`
 - c) `Authorization: Bearer <jeton>`
-- d) `Token: <jeton>`
+- **Q1.6 (Ouverte, 2 pts) `[CP8]`**
+  Pourquoi la connexion répond-elle **le même** `401 Invalid credentials` pour un email inconnu et pour un mauvais mot de passe ?
 
-**Q1.6 (Ouverte, 2 pts) `[CP8]`**
-Pourquoi la connexion répond-elle **le même** `401 Invalid credentials` pour un email inconnu et pour un mauvais mot de passe ?
-
-> **Réponse :** _(écris ta réponse ici)_
+> **Réponse :** car ça ne correspond a la signature du payload
 
 ---
 
@@ -190,16 +169,16 @@ Pourquoi la connexion répond-elle **le même** `401 Invalid credentials` pour u
 
 ```ts
 app.post("/login", async (req, res) => {
-    const user = users.find((u) => u.email === req.body.email);
-    if (!user) {
-        res.status(401).json({ error: "Email inconnu" });
-        return;
-    }
-    if (req.body.password !== user.password) {
-        res.status(401).json({ error: "Mot de passe faux" });
-        return;
-    }
-    res.json(user);
+  const user = users.find((u) => u.email === req.body.email);
+  if (!user) {
+    res.status(401).json({ error: "Email inconnu" });
+    return;
+  }
+  if (req.body.password !== user.password) {
+    res.status(401).json({ error: "Mot de passe faux" });
+    return;
+  }
+  res.json(user);
 });
 ```
 
@@ -207,32 +186,37 @@ a) Les deux messages d'erreur sont différents. Pourquoi est-ce un problème de 
 b) La comparaison `req.body.password !== user.password` montre que le mot de passe est stocké comment ? Par quoi faut-il la remplacer ?
 c) `res.json(user)` : qu'est-ce qui part dans la réponse ? Qu'est-ce qu'on devrait renvoyer à la place, après une connexion réussie ?
 
-> **Réponse a) :** _(écris ta réponse ici)_
+> **Réponse a) :** parce qu'on identique clairement d'ou vient le pb le mail ou le mot passe
 >
-> **Réponse b) :** _(écris ta réponse ici)_
+> **Réponse b) :** il est stocke en clair
 >
-> **Réponse c) :** _(écris ta réponse ici)_
+> **Réponse c) :**on devrait renvoye que le mail et l'id eventuellement car la meme le mot de passe part.
 
 ---
 
 ## Section 3 - Écrire du code (18 min - 16 pts)
 
 > Installation (une fois) :
+>
 > ```bash
 > npm install bcryptjs jsonwebtoken
 > npm install -D @types/jsonwebtoken
 > ```
+>
 > En haut de `app.ts` :
+>
 > ```ts
 > import bcrypt from "bcryptjs";
 > import jwt from "jsonwebtoken";
 > ```
+>
 > Si TypeScript souligne `bcryptjs`, installe aussi `npm install -D @types/bcryptjs`.
 >
 > Rappel : tout ce que tu ajoutes va **au-dessus** du bloc du 404.
 
 **Q3.1 (Code, 4 pts) `[CP3, CP8]`**
 Modifie ta route `POST /users` du jour 3 :
+
 - la route devient **`async`** ;
 - au lieu de ranger `password`, range **`passwordHash`**, calculé avec `bcrypt.hash(..., 10)` ;
 - la réponse reste `{ id, email }`.
@@ -240,7 +224,20 @@ Modifie ta route `POST /users` du jour 3 :
 Pense à changer aussi le type : `type User = { id: number; email: string; passwordHash: string };`
 
 ```ts
-// écris ton code ici
+app.post("/users", async (req, res) => {
+  const user = {
+    id: users.length + 1,
+    email: req.body.email,
+    passwordHash: await bcrypt.hash(req.body.password, 10),
+  };
+
+  type User = { id: number; email: string; passwordHash: string };
+
+  users.push(user as User);
+
+  const utilisateur = { id: user.id, email: user.email };
+  res.status(201).json(utilisateur);
+});
 ```
 
 Test :
@@ -253,12 +250,31 @@ Attendu : **201** avec `{"id":1,"email":"lea@ecoda.fr"}`.
 
 **Q3.2 (Code, 4 pts) `[CP3, CP8]`**
 Écris `POST /login` qui reçoit `{ "email", "password" }` :
+
 - cherche l'utilisateur avec `users.find(...)` ;
 - si l'email est inconnu **ou** si `bcrypt.compare` répond `false` → **401** `{ "error": "Invalid credentials" }` ;
 - sinon → **200** `{ "message": "connected" }` (le jeton viendra à la Q3.3).
 
 ```ts
-// écris ton code ici
+app.post("/login", async (req, res) => {
+  const user = {
+    email: req.body.email,
+    password: req.body.password,
+  };
+  const existingUser = users.find((u) => u.email === user.email);
+  if (existingUser === undefined) {
+    res.status(401).json({ error: "Invalid credentials" });
+    return;
+  }
+  if (
+    user.email === undefined ||
+    !(await bcrypt.compare(user.password, existingUser.passwordHash))
+  ) {
+    res.status(401).json({ error: "Invalid credentials" });
+    return;
+  }
+  res.status(200).json({ message: "connected" });
+});
 ```
 
 Test (refais d'abord le `POST /users`, la liste se vide à chaque redémarrage) :
@@ -288,6 +304,7 @@ Test : connecte-toi, puis colle le jeton sur **jwt.io** et regarde le payload.
 
 **Q3.4 (Code, 4 pts) `[CP3, CP8]`**
 Écris le vigile `requireAuth` :
+
 - pas d'en-tête `Authorization`, ou pas de la forme `Bearer <jeton>` → **401** `{ "error": "Unauthorized" }` ;
 - `jwt.verify` échoue → **401** `{ "error": "Invalid token" }` (utilise `try / catch`) ;
 - sinon → range le payload dans `res.locals.user`, puis `next()`.
@@ -310,4 +327,4 @@ Attendu : **401** `Unauthorized`, **200** avec tes infos, puis **401** `Invalid 
 
 ---
 
-*Fin du jour 4 (35 pts). Envoie-moi tes réponses : on corrige ensemble. Au jour 5, on passe à Redis.*
+_Fin du jour 4 (35 pts). Envoie-moi tes réponses : on corrige ensemble. Au jour 5, on passe à Redis._
