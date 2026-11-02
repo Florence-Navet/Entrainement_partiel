@@ -6,6 +6,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { JSONSchema } from "zod/v4/core";
 import { cp } from "fs";
+import { REPL_MODE_STRICT } from "repl";
+import { runInNewContext } from "vm";
 
 const app = express();
 const JWT_SECRET = "your_jwt_secret";
@@ -74,7 +76,7 @@ app.get("/items/:id", requireApikey, (req, res) => {
 
 app.use(express.json());
 
-app.post("/notes", (req, res) => {
+app.post("/notes", async (req, res) => {
   const result = NoteSchema.safeParse(req.body);
   if (!result.success) {
     res.status(400).json({ errors: result.error.issues });
@@ -83,10 +85,24 @@ app.post("/notes", (req, res) => {
 
   const note = { id: notes.length + 1, text: result.data.text };
   notes.push(note);
+
+  await redis.del("cache:notes");
   res.status(201).json(note);
 });
 
-app.get("/notes", (req, res) => {
+app.get("/notes", async (req, res) => {
+   const cached = await redis.get("cache:notes");
+
+  if (cached) {
+
+    res.set("X-Cache", "HIT");
+    res.json({ message: "la liste des notes est :", notes: JSON.parse(cached) });
+    return;
+  }
+
+  res.set("X-Cache", "MISS");
+  await redis.set("cache:notes", JSON.stringify(notes), "EX", 60);
+
   const response = "la liste des notes est :";
 
   res.json({ message: response, notes: notes });
@@ -166,6 +182,46 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
       const response = "hello me";
       res.json({ message: response, user: res.locals.user });
     });
+
+
+        app.get("/visits", async (req, res) => {
+
+   
+
+      const visits = await redis.incr("visits");
+
+
+      for (let i = 0; i < visits; i++) {
+        console.log(`Visit number: ${i}`);
+      }
+
+      res.json({ message: "merci pour les visites", visits })
+    });
+
+    app.get("/announcement", async (req, res) => {
+      const text = await redis.get("announcement");
+
+      if (!text) {
+        res.status(404).json({ error: "No announcement" });
+        return;
+      }
+
+
+
+  res.status(200).json({ text:text});
+
+});
+
+app.post("/announcement", async (req, res) => {
+  console.log(req.body.text);
+  const text = req.body.text;
+  await  redis.set("announcement" , text, "EX", 30);
+
+  res.status(201).json({ text:text, expiresIn: 30 });
+
+ 
+});
+
 
 
 
