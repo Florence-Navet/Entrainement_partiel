@@ -1,15 +1,19 @@
 import express, { NextFunction, Request, Response } from "express";
 import db from "./config/db";
 import redis from "./config/redis";
-import { email, z } from "zod";
+import { z } from "zod";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { JSONSchema } from "zod/v4/core";
-import { cp } from "fs";
-import { REPL_MODE_STRICT } from "repl";
-import { runInNewContext } from "vm";
+import fs from "fs";
+import YAML from "yaml";
+import swaggerUi from "swagger-ui-express";
+
 
 const app = express();
+
+const openapiDocument = YAML.parse(fs.readFileSync("openapi.yaml", "utf8"));
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
+
 const JWT_SECRET = "your_jwt_secret";
 
 
@@ -31,7 +35,7 @@ app.get("/hello", async (req, res) => {
   res.json({ message: rows[0]?.message ?? null, visits });
 });
 app.get("/ping", (req, res) => {
-  const blabla = "message: pong";
+  const blabla = "pong";
   res.json({ message: blabla });
 
   // res.json({ "message": "pong" });
@@ -42,8 +46,8 @@ app.get("/secret", async (req, res) => {
 });
 
 app.get("/get/hello/name", (req, res) => {
-  const blabla = { message: "bonjour Lea" };
-  res.json({ message: blabla });
+  const response = { message: "bonjour Lea" };
+  res.json({ message: response });
 });
 
 app.get("/lol", (req, res) => {
@@ -51,11 +55,15 @@ app.get("/lol", (req, res) => {
 });
 
 app.get("/hello/:name", (req, res) => {
-  const blabla = `Bonjour ${req.params.name}`;
-  res.json({ message: blabla });
+  const response = `Bonjour ${req.params.name}`;
+  res.json({ message: response });
 });
 
 const requireApikey = (req: Request, res: Response, next: NextFunction) => {
+      if (req.headers["x-api-key"] !== "secret123") {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+    }
   next();
 };
 
@@ -64,14 +72,18 @@ app.get("/admin", requireApikey, (req, res) => {
   res.json({ message: response });
 });
 
-app.get("/items/:id", requireApikey, (req, res) => {
+const parseIdParam =(req:Request, res: Response, next: NextFunction) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const resp = `id: id`;
-  res.json({ message: resp });
+  res.locals.id = id;
+  next();
+}
+
+app.get("/items/:id", parseIdParam, (req, res) => {
+  res.json({ id: res.locals.id });
 });
 
 app.use(express.json());
@@ -109,10 +121,26 @@ app.get("/notes", async (req, res) => {
 });
 
 
+const limitLogin = async (req: Request, res: Response, next: NextFunction) => {
+ const key = `ratelimit:login:${req.ip}`;
+ const count = await redis.incr(key);
+ if (count === 1) {
+   await redis.expire(key, 60);
+ }
+ if (count > 5) {
+  const ttl = await redis.ttl(key);
+   res.set("Retry-After", String(ttl));
+   res.status(429).json({ error: "Too many login attempts" });
+   return;
+ }
 
-app.post("/login", async (req, res) => {
+ next();
 
-;
+};
+
+app.post("/login", limitLogin, async (req, res) => {
+
+
   const user = {
     email: req.body.email,
     password: req.body.password,

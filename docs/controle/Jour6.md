@@ -1,228 +1,436 @@
-# Jour 5 - Redis : compteur, durée de vie et cache (CORRIGÉ)
+# Jour 6 - Limiter les tentatives (429) et documenter l'API (OpenAPI)
 
-- **Ma note :** 22 / 35 (12,6 / 20)
-- **Le bilan :** mon code est presque parfait (15 / 16), mais je n'arrive pas encore à **expliquer** ce que je fais (Section 2 : 0 / 6).
-- **Les idées à retenir :**
-  1. **bcrypt** hache le mot de passe. Le **JWT** est le jeton donné après la connexion.
-  2. `expiresIn: 3600` (nombre) = 3600 **secondes**. `"3600"` (texte) = 3600 **millisecondes**.
-  3. Redis garde tout **en mémoire** (RAM), en **clé → valeur**.
-  4. Redis ne range que du **texte** : `JSON.stringify` pour ranger, `JSON.parse` pour relire.
-  5. Un en-tête HTTP s'ajoute avec **`res.set`**, pas avec `redis.set`.
+- **Objet :** séance d'entraînement n°6 pour le partiel EC04, au format des épreuves Markdown de CODA.
+- **Durée indicative :** 35 min (5 min de révision + 7 min de lecture + 23 min de questions)
+- **Modalités :** lis d'abord « L'essentiel à retenir », puis réponds **sans regarder** cette partie.
+- **Projet pour la partie code :** `~/projets/entrainement-partiel`, fichier `src/app.ts`. On repart de la route `POST /login` du jour 4.
+- **Avant de commencer :** `docker compose up -d db redis`, puis `npm run dev`.
 
 ---
 
-## Section 0 - Révision du jour 4 (2 / 5)
+## Comment remplir ce document
 
-**Q0.1** Pour enregistrer un mot de passe :
+| Type de question | Comment répondre |
+| --- | --- |
+| **QCU** (une seule bonne réponse) | Supprime les lignes des propositions incorrectes. Il ne doit rester qu'**une seule** ligne. |
+| **QCM** (plusieurs réponses possibles) | Supprime les lignes des propositions incorrectes. Il reste uniquement les bonnes réponses. |
+| **Ouverte** | Rédige ta réponse dans le bloc `> Réponse :` sous la question. |
+| **Code guidé** | Suis les étapes. Écris toi-même chaque morceau, teste, puis passe au suivant. |
+| **Lecture de code** | Réponds à chaque sous-question dans les blocs `> Réponse :`. |
+
+---
+
+## Section 0 - Révision ciblée (5 min - 8 pts)
+
+> Ces questions reprennent **mes erreurs qui reviennent**. Relis d'abord les idées à retenir des corrigés des jours 4 et 5.
+
+**Q0.1 (QCU, 1 pt) `[CP8]`**
+Pour enregistrer un mot de passe dans la base, on utilise :
+
 
 - b) un hash bcrypt
 
-❌ J'ai encore mis JWT (4e fois). Le JWT n'enregistre rien. Moyen de m'en souvenir : **b**crypt pour la **b**ase, **J**WT pour le **J**eton.
 
-**Q0.2** `expiresIn: "3600"`, avec des guillemets :
 
-- c) 3600 millisecondes (3,6 secondes)
+**Q0.2 (QCU, 1 pt) `[CP3]`**
+À quoi sert un JWT ?
 
-❌ J'avais mis 3600 secondes. C'est le bug que j'ai eu pour de vrai au jour 4 : mon jeton durait 3 secondes (`exp - iat = 3`).
 
-**Q0.3** Où ranger l'utilisateur dans un vigile ?
+- b) à prouver qu'on s'est connecté, à chaque requête suivante
 
-- b) `res.locals.user`
 
-✅
+**Q0.3 (QCU, 1 pt) `[CP3]`**
+`jwt.sign(..., { expiresIn: "60" })`, avec des guillemets, donne un jeton valable :
 
-**Q0.4** Pourquoi le même message à la connexion ?
+- b) 60 minutes
+-
 
-> **Réponse :** pour qu'un pirate ne puisse pas savoir **quels emails ont un compte**. Avec deux messages différents, il testerait une liste d'emails et verrait lesquels existent.
+**Q0.4 (QCU, 1 pt) `[CP8]`**
+Où Redis garde-t-il ses données ?
 
-⚠️ J'avais l'idée (« ne pas donner trop d'infos »), mais pas la raison précise.
+- a) sur le disque
 
----
 
-## Section 1 - Comprendre (5 / 8)
+**Q0.5 (QCU, 1 pt) `[CP3]`**
+Quelle ligne ajoute l'en-tête `X-Cache: HIT` à la réponse ?
 
-**Q1.1** Où Redis garde-t-il ses données ?
+- a) `redis.set("X-Cache", "HIT")`
 
-- b) en mémoire (RAM)
 
-❌ J'avais mis « sur le disque ». C'est justement **la** différence avec PostgreSQL, et ce qui le rend si rapide.
+**Q0.6 (Ouverte, 1 pt) `[CP8]`**
+On a rangé une liste dans Redis avec `JSON.stringify(notes)`. Quand on la relit avec `redis.get`, qu'obtient-on : une liste, ou un texte ? Comment la retransformer en liste ?
 
-**Q1.2** `redis.get` sur une clé inexistante → **c) `null`** ✅
+> **Réponse :**on obtien un texte :  on la retranstranforme en la parsant avc JSON.parse
 
-**Q1.3** Ranger 60 secondes → **b) `redis.set("message", "bonjour", "EX", 60)`** ✅
+**Q0.7 (Ouverte, 2 pts) `[CP8]`**
+`TTL cache:notes` répond `-2`. Qu'est-ce que ça veut dire ? Et s'il répondait `-1` ?
 
-**Q1.4** Pour quoi Redis est-il adapté ?
-
-- a) un compteur de visites
-- b) un cache de réponses
-- d) une valeur qui doit s'effacer au bout de 5 minutes
-
-⚠️ Je n'avais gardé que b). Pourtant, j'ai fait **les trois** dans ce jour 5 : le compteur `/visits` (a), le cache `/notes` (b), l'annonce de 30 secondes (d). Seul c) est faux : les comptes utilisateurs doivent rester **pour toujours**, c'est le rôle de PostgreSQL.
-
-**Q1.5** `X-Cache: HIT` → **b) la réponse vient du cache Redis** ✅
-
-**Q1.6** Pourquoi supprimer `cache:notes` après un `POST /notes` ?
-
-> **Réponse :** le post-it a été écrit **avant** la nouvelle note. Sans le supprimer, le `GET /notes` répondrait avec cette vieille copie (HIT) jusqu'à la fin des 60 secondes : le client ne verrait pas la note qu'il vient de créer. En le supprimant, le prochain `GET` est un MISS, avec la liste à jour.
-
-⚠️ J'avais l'idée (« toujours le même cache »), mais pas l'explication complète.
+> **Réponse :**c-2 c'est un hit et -1 un miss
 
 ---
 
-## Section 2 - Lire du code (0 / 6)
+## L'essentiel à retenir (7 min)
+
+### Partie 1 : limiter les tentatives de connexion
+
+**Le problème.** Un pirate peut essayer des milliers de mots de passe sur `POST /login`, très vite, avec un programme. C'est une **attaque par force brute**.
+
+**La solution.** On **compte** les tentatives de chaque visiteur, pendant une minute. Au-delà de 5, on refuse avec le code **429 Too Many Requests**.
+
+**Avec Redis**, c'est le compteur du jour 5, avec une durée de vie :
+
+1. une clé **par visiteur** : `ratelimit:login:` suivi de son adresse IP (`req.ip`) ;
+2. à chaque tentative : `redis.incr(cle)`, qui renvoie le nombre de tentatives ;
+3. **à la première tentative seulement** (le compteur vaut 1), on donne à la clé une durée de vie de 60 secondes : `redis.expire(cle, 60)` ;
+4. si le compteur dépasse 5 → **429**, avec l'en-tête **`Retry-After`** qui dit au client combien de secondes attendre.
+
+Au bout de 60 secondes, la clé s'efface toute seule : le compteur repart à zéro.
+
+| Commande | Ce qu'elle fait | Renvoie |
+| --- | --- | --- |
+| `await redis.incr(cle)` | ajoute 1 | le nouveau total |
+| `await redis.expire(cle, 60)` | donne 60 secondes de vie à une clé **qui existe déjà** | `1` |
+| `await redis.ttl(cle)` | les secondes restantes | un nombre |
+
+On l'écrit comme un **vigile**, posé sur `POST /login`, exactement comme `requireAuth`.
+
 
 ```ts
-app.get("/notes", async (req, res) => {
-  const cached = await redis.get("cache:notes");
-  if (cached !== null) {
-    res.json(cached);
+const limitLogin = async (req: Request, res: Response, next: NextFunction) => {
+ const key = `ratelimit:login:${req.ip}`;
+ const count = await redis.incr(key);
+ if (count === 1) {
+   await redis.expire(key, 60);
+ }
+ if (count > 5) {
+  const ttl = await redis.ttl(key);
+   res.set("Retry-After", String(ttl));
+   res.status(429).json({ error: "Too many login attempts" });
+   return;
+ }
+
+ next();
+
+};
+
+app.post("/login", limitLogin, async (req, res) => {
+
+
+  const user = {
+    email: req.body.email,
+    password: req.body.password,
+  };
+  const existingUser = users.find((u) => u.email === user.email);
+  if (existingUser === undefined) {
+    res.status(401).json({ error: "Invalid credentials" });
     return;
   }
-  await redis.set("cache:notes", JSON.stringify(notes));
-  res.json(notes);
+  if (
+    user.email === undefined ||
+    !(await bcrypt.compare(user.password, existingUser.passwordHash))
+  ) {
+    res.status(401).json({ error: "Invalid credentials" });
+    return;
+  }
+  // res.status(200).json({ message: "connected" });
+  const token = jwt.sign(
+    {
+      sub: String(existingUser.id), email: existingUser.email},
+      JWT_SECRET,
+      { expiresIn: 3600 }
+    
+  );
+  res.status(200).json({ accesToken: token,  tokenType: "Bearer", expiresIn: 3600 });
 });
+
 ```
 
-> **Réponse a) :** `cached` est **déjà du texte JSON** : on l'a rangé avec `JSON.stringify`. `res.json(...)` le transforme en JSON **une deuxième fois** : le client reçoit un texte, avec des `\"`. Il faut soit l'envoyer tel quel avec `res.type("json").send(cached)`, soit le retransformer en liste avec `res.json(JSON.parse(cached))`.
+### Partie 2 : documenter l'API avec OpenAPI
+
+**Le problème.** Un autre développeur (ou le correcteur du partiel) veut savoir quelles routes existent, ce qu'elles attendent et ce qu'elles répondent, sans lire le code.
+
+**OpenAPI** est un **format standard** pour décrire une API, dans un fichier `openapi.yaml`. **Swagger UI** transforme ce fichier en une **page web** où l'on peut lire la documentation et **tester** les routes.
+
+Un fichier OpenAPI décrit, pour chaque route :
+- l'**adresse** et le **verbe** ;
+- les **paramètres** et le **corps** attendus ;
+- **toutes** les réponses possibles, avec leur code (200, 401, 404…) ;
+- si la route est **protégée** par un jeton.
+
+```yaml
+openapi: 3.0.3
+info:
+  title: API d'entraînement
+  version: 1.0.0
+paths:
+  /ping:
+    get:
+      summary: Vérifier que l'API répond
+      responses:
+        "200":
+          description: L'API répond pong
+```
+
+⚠️ En YAML, **les espaces au début des lignes comptent**, comme dans `docker-compose.yml`. Chaque niveau est décalé de **2 espaces**. Jamais de tabulation.
+
+---
+
+## Section 1 - Comprendre (5 min - 6 pts)
+
+**Q1.1 (QCU, 1 pt) `[CP8]`**
+Que veut dire le code **429** ?
+
+
+- b) trop de requêtes en peu de temps
+
+
+**Q1.2 (QCU, 1 pt) `[CP8]`**
+Pourquoi limiter le nombre de tentatives sur `POST /login` ?
+
+
+- b) pour empêcher un pirate d'essayer des milliers de mots de passe
+
+
+**Q1.3 (QCU, 1 pt) `[CP8]`**
+Pourquoi la clé contient-elle l'adresse IP du visiteur (`ratelimit:login:<ip>`) ?
+
+- a) pour compter les tentatives de **chaque** visiteur séparément
+
+
+**Q1.4 (QCM, 2 pts) `[CP3]`**
+Que trouve-t-on dans une documentation OpenAPI ?
+
+- a) les adresses et verbes des routes
+- b) les réponses possibles avec leurs codes
+
+
+
+
+**Q1.5 (QCU, 1 pt) `[CP3]`**
+Qu'est-ce que Swagger UI ?
+
+
+- b) une page web qui affiche la documentation OpenAPI et permet de tester les routes
+
+
+---
+
+## Section 2 - Lire du code (4 min - 5 pts)
+
+**Q2.1 (Lecture de code, 5 pts) `[CP8]`**
+
+```ts
+const limitLogin = async (req: Request, res: Response, next: NextFunction) => {
+  const key = "ratelimit:login";
+  const count = await redis.incr(key);
+  if (count > 5) {
+    res.status(429).json({ error: "Too many requests" });
+    return;
+  }
+  next();
+};
+```
+
+a) La clé ne contient pas l'IP du visiteur. Que se passe-t-il quand **plusieurs** personnes se connectent en même temps ?
+b) Il manque `redis.expire`. Que se passe-t-il au bout de 5 tentatives, même une heure plus tard ?
+c) Il manque l'en-tête `Retry-After`. À quoi sert-il ?
+
+> **Réponse a) :** pb de connection pour les utilisateurs
 >
-> **Réponse b) :** sans durée de vie, le post-it **ne s'efface jamais** (son `TTL` vaut `-1`). Si les notes changent, le client voit la vieille copie **pour toujours**. Correction : `await redis.set("cache:notes", JSON.stringify(notes), "EX", 60);`
+> **Réponse b) :** la cle est toujours valable
 >
-> **Réponse c) :** `res.set("X-Cache", "HIT")` **dans le `if`**, avant le `res.json(cached)`. `res.set("X-Cache", "MISS")` **après le `if`**, avant le `res.json(notes)`.
-
-❌ Les trois étaient fausses ou vides. Pourtant :
-- pour a), c'est **exactement** ce que j'ai fait à la Q3.3 avec `JSON.parse(cached)` ;
-- pour b), c'est le `"EX", 60` que j'ai écrit moi-même ;
-- pour c), un **en-tête HTTP** s'ajoute à la **réponse**, avec **`res.set`**. `redis.set` range une valeur **dans Redis** : ce sont deux choses différentes.
-
-| Ligne | Elle agit sur |
-| --- | --- |
-| `res.set("X-Cache", "HIT")` | la **réponse** envoyée au client (un en-tête) |
-| `redis.set("cache:notes", ...)` | la **base Redis** (une clé) |
+> **Réponse c) :**à retenter la connection ulterieur pour un utilisateurs normal
 
 ---
 
-## Section 3 - Code guidé (15 / 16)
+## Section 3 - Code guidé (20 min - 16 pts)
 
-### Q3.1 - Le compteur de visites (3 / 4)
+> Pour chaque question, écris **toi-même** chaque étape, teste, puis passe à la suivante. Si tu bloques, envoie-moi ce que tu as écrit.
+> Rappel : tout ce que tu ajoutes va **au-dessus** du bloc du 404.
 
-```ts
-app.get("/visits", async (req, res) => {
-  const visits = await redis.incr("visits");
+### Q3.1 - Le vigile `limitLogin` (8 pts) `[CP8]`
 
-  for (let i = 0; i < visits; i++) {
-    console.log(`Visit number: ${i}`);
-  }
+**But :** au-delà de 5 tentatives de connexion en une minute, `POST /login` répond **429**.
 
-  res.json({ message: "merci pour les visites", visits });
-});
-```
+**Étape 1 : la coquille.** Écris un vigile `limitLogin`, **`async`**, qui reçoit `req`, `res`, `next`, et qui pour l'instant appelle seulement `next()`. Pose-le sur ta route `POST /login`, **entre** l'adresse et la fonction de la route.
 
-✅ Le code marche. La boucle utilise `visits` (un nombre) comme limite, sans `.length`.
+**Indice :** c'est la même forme que `requireAuth`, avec `async` en plus.
 
-> **Pourquoi le compteur continue après un redémarrage, alors que `notes` se vide :** la liste `notes` est rangée dans la **mémoire du serveur Node** : elle est effacée quand il redémarre. Le compteur `visits` est rangé **dans Redis**, qui tourne à part, dans son conteneur Docker : il continue d'exister.
+**Étape 2 : compter.** Dans le vigile, avant `next()` :
+- fabrique la clé : `` const key = `ratelimit:login:${req.ip}`; `` ;
+- ajoute 1 au compteur avec `redis.incr`, et range le résultat dans `count`.
 
-⚠️ J'avais répondu « je ne sais pas », alors qu'on l'avait vu ensemble.
+Teste avec 3 connexions, puis regarde dans la console Redis : `KEYS ratelimit:*`, puis `GET` sur la clé affichée.
 
-À retenir aussi : `{ visits }` est un raccourci pour `{ visits: visits }`, quand l'étiquette et la variable ont le même nom.
+**Étape 3 : la durée de vie.** Si `count` vaut **1** (première tentative), donne 60 secondes de vie à la clé avec `redis.expire`.
 
-### Q3.2 - L'annonce de 30 secondes (4 / 4)
+Teste, puis `TTL` sur la clé dans la console Redis : le nombre doit descendre depuis 60.
 
-```ts
-app.post("/announcement", async (req, res) => {
-  const text = req.body.text;
-  await redis.set("announcement", text, "EX", 30);
-  res.status(201).json({ text: text, expiresIn: 30 });
-});
-
-app.get("/announcement", async (req, res) => {
-  const text = await redis.get("announcement");
-  if (!text) {
-    res.status(404).json({ error: "No announcement" });
-    return;
-  }
-  res.status(200).json({ text: text });
-});
-```
-
-✅ Ce que j'ai appris en l'écrivant :
-- **`req.body.text`** : la valeur rangée sous le nom `text`, dans ce que le client envoie après `-d` ;
-- **l'ordre de `redis.set`** : la clé, la valeur, `"EX"`, la durée ;
-- **la clé est un nom fixe** (`"announcement"`), pas le texte lui-même : sinon, le `GET` ne pourrait pas la retrouver ;
-- **un `GET` lit seulement**, il n'écrit jamais. C'est le `POST` qui range ;
-- `incr` sert à **compter**, `set` à **ranger**.
-
-### Q3.3 - Le cache sur `GET /notes` (5 / 5)
+**Étape 4 : bloquer.** Si `count` est **supérieur à 5** :
+- lis les secondes restantes avec `redis.ttl(key)` ;
+- ajoute l'en-tête `Retry-After` avec `res.set("Retry-After", String(...))` ;
+- réponds **429** avec `{ "error": "Too many requests" }` ;
+- `return`.
 
 ```ts
-app.get("/notes", async (req, res) => {
-  const cached = await redis.get("cache:notes");
-
-  if (cached) {
-    res.set("X-Cache", "HIT");
-    res.json({ message: "la liste des notes est :", notes: JSON.parse(cached) });
-    return;
-  }
-
-  res.set("X-Cache", "MISS");
-  await redis.set("cache:notes", JSON.stringify(notes), "EX", 60);
-
-  const response = "la liste des notes est :";
-  res.json({ message: response, notes: notes });
-});
+// écris ton code ici
 ```
 
-✅ Résultat obtenu : `X-Cache: MISS` au premier appel, `X-Cache: HIT` au suivant.
-
-Ce que j'ai appris en l'écrivant :
-- la clé est un **nom fixe entre guillemets** (`"cache:notes"`), la valeur est la **variable** `notes` ;
-- le cas HIT d'abord, avec `return`, puis le MISS en dessous ;
-- le nom exact de l'en-tête : **`X-Cache`**, avec `HIT` et `MISS` en majuscules.
-
-### Q3.4 - L'invalidation (3 / 3)
-
-```ts
-app.post("/notes", async (req, res) => {
-  const result = NoteSchema.safeParse(req.body);
-  if (!result.success) {
-    res.status(400).json({ errors: result.error.issues });
-    return;
-  }
-
-  const note = { id: notes.length + 1, text: result.data.text };
-  notes.push(note);
-
-  await redis.del("cache:notes");
-  res.status(201).json(note);
-});
-```
-
-✅ Après une nouvelle note, le post-it est supprimé : le `GET` suivant est un MISS, avec la liste à jour.
-
----
-
-## Dans la console Redis
+**Test :** lance 7 connexions d'un coup.
 
 ```bash
-docker compose exec redis redis-cli
+for i in 1 2 3 4 5 6 7; do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"email":"lea@ecoda.fr","password":"faux"}'; done
 ```
 
-| Commande | Ce qu'elle montre |
-| --- | --- |
-| `KEYS *` | toutes les clés |
-| `GET visits` | la valeur d'une clé, ou `(nil)` |
-| `TTL announcement` | les secondes restantes |
+- `-s -o /dev/null` : n'affiche pas le corps de la réponse ;
+- `-w "%{http_code}\n"` : affiche seulement le **code**.
 
-Les trois réponses possibles de `TTL` :
+Attendu : cinq **401**, puis deux **429**. Attends une minute, relance : de nouveau des **401**.
 
-| `TTL` répond | Ça veut dire |
-| --- | --- |
-| un nombre positif | il reste ce nombre de secondes |
-| `-1` | la clé existe, sans durée de vie |
-| `-2` | la clé n'existe pas |
+### Q3.2 - Documenter l'API avec Swagger UI (8 pts) `[CP3]`
 
-## Les pièges rencontrés pendant la séance
+**Installation (une fois) :**
 
-- **`curl` tapé dans la console Redis** : Redis ne connaît que ses commandes. `curl` se tape dans le terminal **Ubuntu**. Avoir deux terminaux ouverts côte à côte.
-- **`GET cache: notes`** avec un espace : l'espace sépare les morceaux d'une commande. Écrire `GET cache:notes`.
-- **Une requête SQL sur une table `visits`** qui n'existe pas : le compteur est dans **Redis**, pas dans PostgreSQL.
-- **`.length` sur un nombre** : il n'existe que pour une liste ou un texte. Un nombre sert directement de limite : `i < visits`.
+```bash
+npm install swagger-ui-express yaml
+npm install -D @types/swagger-ui-express
+```
+
+**Étape 1 : le fichier de documentation.** À la **racine** du projet (à côté de `package.json`), crée `openapi.yaml`. Recopie le modèle de l'essentiel (avec `/ping`), et vérifie les espaces.
+
+**Étape 2 : afficher la page.** En haut de `app.ts`, ajoute :
+
+```ts
+import fs from "fs";
+import YAML from "yaml";
+import swaggerUi from "swagger-ui-express";
+```
+
+Puis, juste après `app.use(express.json());` :
+
+```ts
+const openapiDocument = YAML.parse(fs.readFileSync("openapi.yaml", "utf8"));
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
+```
+
+- `fs.readFileSync` : lit le fichier `openapi.yaml` ;
+- `YAML.parse` : le transforme en objet JavaScript ;
+- `app.use("/docs", ...)` : affiche la documentation à l'adresse `/docs`.
+
+Ouvre **http://localhost:3000/docs** dans ton navigateur. Tu dois voir la route `/ping`. Clique dessus, puis **Try it out** et **Execute** : la réponse `pong` s'affiche.
+
+**Étape 3 : documenter `POST /login`.** Dans `openapi.yaml`, sous `paths:`, ajoute la route `/login` avec :
+- `post:` et un `summary` ;
+- un `requestBody` qui attend `email` et `password` ;
+- les réponses `"200"` (jeton renvoyé), `"401"` (identifiants invalides) et `"429"` (trop de tentatives).
+
+**Aide pour le `requestBody` :**
+
+```yaml
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+```
+
+Recharge `/docs` : la route `/login` apparaît, avec ses trois réponses.
+
+**Étape 4 : documenter `GET /me`, protégée par un jeton.**
+1. tout en bas du fichier, au même niveau que `paths:`, déclare le type de sécurité :
+
+```yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+```
+
+2. ajoute la route `/me` avec `get:`, les réponses `"200"` et `"401"`, et ces deux lignes sous `get:` :
+
+```yaml
+      security:
+        - bearerAuth: []
+```
+
+Recharge `/docs` : un cadenas apparaît sur `/me`, et un bouton **Authorize** en haut de la page. Connecte-toi avec `/login` dans Swagger, copie le jeton, colle-le dans **Authorize**, puis teste `/me` : tu dois obtenir **200**.
+
+```yaml
+openapi: 3.0.3
+info:
+  title: API d'entraînement
+  version: 1.0.0
+paths:
+  /ping:
+    get:
+      summary: Vérifier que l'API répond
+      responses:
+        "200":
+          description: L'API répond pong
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: pong
+  /login:
+    post:
+      summary: Se connecter à l'API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        "200":
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: connected
+        "401":
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid credentials
+        "429":
+          description: Trop de tentatives de connexion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Too many login attempts
+```
+
+---
+
+*Fin du jour 6 (35 pts). Envoie-moi tes réponses : on corrige ensemble. Ensuite, on fera un sujet blanc complet, comme le jour du partiel.*
