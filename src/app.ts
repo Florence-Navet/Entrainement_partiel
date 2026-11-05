@@ -11,6 +11,8 @@ import swaggerUi from "swagger-ui-express";
 
 const app = express();
 
+app.use(express.json());
+
 const openapiDocument = YAML.parse(fs.readFileSync("openapi.yaml", "utf8"));
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
@@ -19,6 +21,26 @@ const JWT_SECRET = "your_jwt_secret";
 
 
 const users: { id: number; email: string; passwordHash: string }[] = [];
+
+type Challenge = { id: number; title: string; category: string; points: number };
+
+const challenges: Challenge[] = [
+  { id: 1, title: "Se déplacer à vélo", category: "carbone", points: 10 },
+  { id: 2, title: "Repas 100 % végétarien", category: "alimentation", points: 10 },
+  { id: 3, title: "Faire un trajet en covoiturage", category: "carbone", points: 20 },
+];
+
+const notes: { id: number; text: string }[] = [];
+
+const NoteSchema = z.object({
+  text: z.string().min(1).max(140),
+});
+
+const RegisterSchema = z.object({
+    email: z.string(),
+  password: z.string().min(8),
+
+}); 
 
 // 1. L'API répond (aucune dépendance)
 app.get("/", (req, res) => {
@@ -43,11 +65,6 @@ app.get("/ping", (req, res) => {
 
 app.get("/secret", async (req, res) => {
   res.status(401).json({ error: "Unauthorized" });
-});
-
-app.get("/get/hello/name", (req, res) => {
-  const response = { message: "bonjour Lea" };
-  res.json({ message: response });
 });
 
 app.get("/lol", (req, res) => {
@@ -86,7 +103,7 @@ app.get("/items/:id", parseIdParam, (req, res) => {
   res.json({ id: res.locals.id });
 });
 
-app.use(express.json());
+
 
 app.post("/notes", async (req, res) => {
   const result = NoteSchema.safeParse(req.body);
@@ -130,7 +147,7 @@ const limitLogin = async (req: Request, res: Response, next: NextFunction) => {
  if (count > 5) {
   const ttl = await redis.ttl(key);
    res.set("Retry-After", String(ttl));
-   res.status(429).json({ error: "Too many login attempts" });
+   res.status(429).json({ error: "Too many requests" });
    return;
  }
 
@@ -139,7 +156,6 @@ const limitLogin = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 app.post("/login", limitLogin, async (req, res) => {
-
 
   const user = {
     email: req.body.email,
@@ -165,7 +181,7 @@ app.post("/login", limitLogin, async (req, res) => {
       { expiresIn: 3600 }
     
   );
-  res.status(200).json({ accesToken: token,  tokenType: "Bearer", expiresIn: 3600 });
+  res.status(200).json({ accessToken: token,  tokenType: "Bearer", expiresIn: 3600 });
 });
 
 
@@ -178,7 +194,7 @@ app.post("/users", async (req, res) => {
 
   type User = { id: number; email: string; passwordHash: string };
 
-  users.push(user as User);
+  users.push(user);
 
   const utilisateur = { id: user.id, email: user.email };
   res.status(201).json(utilisateur);
@@ -250,20 +266,30 @@ app.post("/announcement", async (req, res) => {
  
 });
 
+app.get("/challenges", (req, res) => {
+  res.json(challenges);
+});
+
+
+app.get("/challenges/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const challenge = challenges.find(c => c.id === id);
+  if (!challenge) {
+    res.status(404).json({ error: "Challenge not found" });
+    return;
+  }
+  res.json(challenge);
+});
+
 
 
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
-{
-}
 
-const notes: { id: number; text: string }[] = [];
 
-const NoteSchema = z.object({
-  text: z.string().min(1).max(140),
-});
+
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   console.error(err);

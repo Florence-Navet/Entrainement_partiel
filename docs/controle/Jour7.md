@@ -6,8 +6,8 @@
   - Le raisonnement prime sur la syntaxe exacte : un pseudo-code clair est accepté partout où « code » est indiqué dans la partie A.
 - **Projet pour la partie B :** `~/projets/entrainement-partiel`. Avant de lancer le chrono : `docker compose up -d db redis`, puis `npm run dev`.
 
-- **Nom et prénom :** _(à remplir)_
-- **Heure de début :** _(à remplir)_ — **Heure de fin :** _(à remplir)_
+- **Nom et prénom :** Florence Navet_
+- **Heure de début :**10h30 — **Heure de fin :** 12h02
 
 ---
 
@@ -47,33 +47,27 @@
 **Q1.1 (QCU, 1 pt) `[CP3]`**
 Quel verbe HTTP **modifie une partie** d'une ressource ?
 
-- a) PUT
+
 - b) PATCH
-- c) POST
-- d) GET
+
 
 **Q1.2 (QCU, 1 pt) `[CP3]`**
 Une suppression a réussi, rien n'est renvoyé. Quel code ?
 
-- a) 200
-- b) 201
-- c) 204
-- d) 404
+- a) 200 no content
+
 
 **Q1.3 (QCU, 2 pts) `[CP3]`**
 La route `GET /challenges` existe. Un client envoie `DELETE /challenges`. Quel code est le plus juste ?
 
-- a) 400
-- b) 404
+
 - c) 405
-- d) 500
+
 
 **Q1.4 (QCU, 2 pts) `[CP3]`**
 `GET /challenges?category=sport` ne trouve aucun défi. Quel code ?
 
-- a) 200, avec `[]`
-- b) 204
-- c) 400
+
 - d) 404
 
 **Q1.5 (Tableau à compléter, 6 pts) `[CP3]`**
@@ -81,12 +75,12 @@ L'utilisatrice est connectée. Le défi n°3 existe. Les ids sont des entiers po
 
 | # | Requête | Code | Pourquoi ? |
 | --- | --- | --- | --- |
-| 1 | `GET /challenges/3` | | |
-| 2 | `GET /challenges/abc` | | |
-| 3 | `GET /challenges/999` | | |
-| 4 | `POST /challenges/3/complete`, la première fois aujourd'hui | | |
-| 5 | La même requête, une deuxième fois le même jour | | |
-| 6 | `GET /me` sans en-tête `Authorization` | | |
+| 1 | `GET /challenges/3` |200 |la route existe |
+| 2 | `GET /challenges/abc` |405 | erreur d'ecriture, on attend un chiffre et on met des lettre |
+| 3 | `GET /challenges/999` |404 |la route n'existe pas |
+| 4 | `POST /challenges/3/complete`, la première fois aujourd'hui | 201 created| le post c'est fait ss pb|
+| 5 | La même requête, une deuxième fois le même jour |401 |unauthorized puisque deja existante |
+| 6 | `GET /me` sans en-tête `Authorization` |401 unauthorized |on attend le token de validation |
 
 ---
 
@@ -95,25 +89,23 @@ L'utilisatrice est connectée. Le défi n°3 existe. Les ids sont des entiers po
 **Q2.1 (QCU, 1 pt) `[CP3]`**
 Dans `app.get("/hello/:name", ...)`, comment lit-on le prénom ?
 
-- a) `req.query.name`
-- b) `req.body.name`
+
 - c) `req.params.name`
-- d) `res.locals.name`
+
 
 **Q2.2 (QCU, 1 pt) `[CP3]`**
 Le client envoie `-d '{"text":"bonjour"}'` en POST. Comment lit-on `bonjour` ?
 
-- a) `req.params.text`
+
 - b) `req.body.text`
-- c) `req.query.text`
-- d) `req.text`
+
 
 **Q2.3 (QCM, 2 pts) `[CP3]`**
 Quelles affirmations sur un middleware sont vraies ?
 
 - a) il reçoit `req`, `res` et `next`, dans cet ordre
 - b) il doit soit appeler `next()`, soit répondre lui-même
-- c) `res.locals` permet de passer une information à la route suivante
+
 - d) il s'applique toujours à toutes les routes du fichier
 
 **Q2.4 (Lecture de code, 4 pts) `[CP3]`**
@@ -136,15 +128,22 @@ app.get("/hello/:name", (_req, res) => {
 a) Que reçoit le client pour `GET /ping` ? Pourquoi ?
 b) Une fois le problème a) corrigé, `GET /hello/Lea` répond 500. Quel message s'affiche dans le terminal, et quelle est la correction ?
 
-> **Réponse a) :** _(écris ta réponse ici)_
+> **Réponse a) :**not found puis la route est place sur app.use
 >
-> **Réponse b) :** _(écris ta réponse ici)_
+> **Réponse b) :**_req doit etre req_
 
 **Q2.5 (Code papier, 4 pts) `[CP3]`**
 Écris un middleware `parseIdParam` qui répond `400` `{ "error": "Invalid id" }` si `req.params.id` n'est pas un entier positif, et sinon range l'id (en nombre) dans `res.locals.id` puis laisse passer.
 
 ```ts
-// écris ton code ici
+const parseIdParm = (req: Request, res: Respons, next: NextFunction) => {
+  const id = Number(req.params.id);
+  if (!(Number.IsInterger(id)) || id<=0) {
+    res.status(400)({error: "Invalid id"});
+  }
+  res.locals.id = id;
+  next()
+}
 ```
 
 ---
@@ -154,22 +153,33 @@ b) Une fois le problème a) corrigé, `GET /hello/Lea` répond 500. Quel message
 **Q3.1 (QCU, 1 pt) `[CP3]`**
 Sans `app.use(express.json())`, que vaut `req.body` ?
 
-- a) `{}`
+
 - b) `undefined`
-- c) le texte brut
-- d) `null`
+- 
 
 **Q3.2 (Code papier, 4 pts) `[CP3]`**
 Écris un schéma Zod `RegisterSchema` : `email` est un texte, `password` est un texte d'au moins 8 caractères. Puis les lignes qui vérifient `req.body` et répondent `400` avec la liste des erreurs si c'est invalide.
 
 ```ts
-// écris ton code ici
+const RegisterSchema = z.object({
+  password: z.string().min(1).max(140),
+  email: z.string().min(8),
+}); 
+
+const result = RegisterSchema.safeParse(req.body);
+if (!result.succes){
+  res.status(400).json({errors: result.error.issues});
+};
 ```
 
 **Q3.3 (Ouverte, 3 pts) `[CP3, CP8]`**
 Qu'est-ce qu'un DTO ? Donne l'exemple de la réponse de `POST /users`.
 
-> **Réponse :** _(écris ta réponse ici)_
+> **Réponse :** un object qui contient des donnees que je peux utiliser en parties ou en entier
+
+
+ex : pour POST/users:
+l'utilisateur a un id, un email et un password, dans utilisateur, je ne recuperer que son id et son email
 
 ---
 
@@ -178,36 +188,34 @@ Qu'est-ce qu'un DTO ? Donne l'exemple de la réponse de `POST /users`.
 **Q4.1 (QCU, 1 pt) `[CP8]`**
 Pour enregistrer un mot de passe :
 
-- a) un JWT
+
 - b) un hash bcrypt
-- c) un chiffrement réversible
-- d) en clair
+
 
 **Q4.2 (QCU, 1 pt) `[CP3]`**
 `{ expiresIn: "3600" }`, avec des guillemets, donne un jeton valable :
 
-- a) 3600 secondes
-- b) 3600 minutes
+
 - c) 3600 millisecondes
-- d) pour toujours
+
 
 **Q4.3 (QCM, 2 pts) `[CP8]`**
 Que peut-on mettre dans le payload d'un JWT ?
 
 - a) `sub`, l'id de l'utilisateur
-- b) son email
 - c) le hash de son mot de passe
 - d) `exp`, la date d'expiration
 
 **Q4.4 (Ouverte, 2 pts) `[CP8]`**
 Qu'est-ce qui garantit qu'un JWT n'a pas été modifié par le client ?
 
-> **Réponse :** _(écris ta réponse ici)_
+
+> **Réponse :** il a une date d'expiration, il est verifié a la connection
 
 **Q4.5 (Ouverte, 2 pts) `[CP8]`**
 Pourquoi la connexion répond-elle le même `401 Invalid credentials` pour un email inconnu et un mauvais mot de passe ?
 
-> **Réponse :** _(écris ta réponse ici)_
+> **Réponse :** pour preciser à un potentiel hacker si c'est ou pas un compte existant et si ça vient du mail ou du mdp
 
 **Q4.6 (Lecture de code, 4 pts) `[CP8]`**
 
@@ -218,8 +226,15 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     res.status(401).json({ error: "Unauthorized" });
   }
   const token = header.split(" ")[1];
-  const payload = jwt.verify(token, JWT_SECRET);
-  res.locals.user = payload;
+
+  try {
+
+    const payload = jwt.verify(token, JWT_SECRET);
+    res.locals.user = payload;
+  } catch(err){
+    res.status(401).json({error:"Invalid token" });
+    return;
+  }
   next();
 };
 ```
@@ -227,14 +242,16 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
 a) Il manque une ligne après le premier `res.status(401)...`. Laquelle, et que se passe-t-il sans elle ?
 b) Un jeton faux fait répondre l'API **500** au lieu de 401. Pourquoi ? Comment le corriger ?
 
-> **Réponse a) :** _(écris ta réponse ici)_
+> **Réponse a) :** il manque le return et sans lui on passe direct a la suiteavec le token
 >
-> **Réponse b) :** _(écris ta réponse ici)_
+> **Réponse b) :** parce que l'api prend ça comme une erreur serveur, il faut catch l'erreur avec invalid token
+
+
 
 **Q4.7 (Ouverte, 4 pts) `[CP8]`**
 Explique comment limiter `POST /login` à 5 tentatives par minute et par visiteur avec Redis : quelle clé, quelles commandes, quel code de réponse et quel en-tête.
 
-> **Réponse :** _(écris ta réponse ici)_
+> **Réponse :**avec un vigile, un cle rateLimitLogin qui recupere l'adresse id, un comp^teur auto incrementé sur cette clé demarrant à 1 avec une expiration. si le count > 5 on envoit une erreur 429 too many request et res.set de retry-after pour retenter plus tard et on passe cette methode dans login
 
 ---
 
@@ -243,45 +260,45 @@ Explique comment limiter `POST /login` à 5 tentatives par minute et par visiteu
 **Q5.1 (QCU, 1 pt) `[CP8]`**
 Où Redis garde-t-il ses données ?
 
-- a) sur le disque
+
 - b) en mémoire (RAM)
-- c) dans le `.env`
-- d) dans le navigateur
+
 
 **Q5.2 (QCU, 1 pt) `[CP3]`**
 Quelle ligne ajoute l'en-tête `X-Cache: MISS` à la réponse ?
 
-- a) `redis.set("X-Cache", "MISS")`
+
 - b) `res.set("X-Cache", "MISS")`
-- c) `req.set("X-Cache", "MISS")`
-- d) `res.json({ "X-Cache": "MISS" })`
+
 
 **Q5.3 (Tableau à compléter, 4 pts) `[CP8]`**
 Complète avec la commande **ioredis**.
 
 | Besoin | Commande |
 | --- | --- |
-| ranger `"ok"` sous `status` pour 60 secondes | |
-| lire `status` | |
+| ranger `"ok"` sous `status` pour 60 secondes |set. |
+| lire `status` |GET statut |
 | ajouter 1 à `visits` | |
-| supprimer `cache:challenges` | |
+| supprimer `cache:challenges` |DELETE |
 
 **Q5.4 (Ouverte, 2 pts) `[CP8]`**
 `TTL announcement` répond `-2`. Qu'est-ce que ça veut dire ? Et `-1` ?
 
-> **Réponse :** _(écris ta réponse ici)_
+> **Réponse :** -2 la cle n'existe pas et -1 elle existe mais sans duree de vie
 
 **Q5.5 (Lecture de code, 6 pts) `[CP8]`**
 
 ```ts
-app.get("/challenges", async (req, res) => {
-  const cached = await redis.get("cache:challenges");
+app.get("/challenges/:id", async (req, res) => {
+  const cached = await redis.get("cache:challenges", "EX", 60);
   if (cached !== null) {
     res.json(cached);
     return;
   }
   await redis.set("cache:challenges", JSON.stringify(challenges));
-  res.json(challenges);
+  // res.json(challenges);
+  await redis.del("cache:challenges");
+
 });
 ```
 
@@ -289,11 +306,11 @@ a) Au 2e appel, le client reçoit un texte plein de `\"` au lieu d'une liste. Po
 b) Il manque une durée de vie. Quel est le problème ? Corrige la ligne `redis.set`.
 c) Un nouveau défi est ajouté. Que faut-il faire dans la route de création pour que le cache reste juste ?
 
-> **Réponse a) :** _(écris ta réponse ici)_
+> **Réponse a) :** parce q u'on a pas vide le cache
 >
-> **Réponse b) :** _(écris ta réponse ici)_
+> **Réponse b) :** corrige dans le code
 >
-> **Réponse c) :** _(écris ta réponse ici)_
+> **Réponse c) :** repondu dans le code
 
 ---
 
@@ -304,8 +321,8 @@ Que décrit un fichier OpenAPI ?
 
 - a) les adresses et verbes des routes
 - b) les réponses possibles avec leurs codes
-- c) si une route demande un jeton
-- d) les mots de passe des utilisateurs
+
+
 
 **Q6.2 (Lecture de code, 3 pts) `[CP3]`**
 
@@ -324,13 +341,12 @@ paths:
 
 Dans Swagger, la route `/users` n'apparaît pas. Pourquoi ? Comment corriger ?
 
-> **Réponse :** _(écris ta réponse ici)_
+> **Réponse :** par elle est mal indentée
 
 **Q6.3 (Ouverte, 3 pts) `[CP3]`**
 Dans Swagger, `GET /me` répond `401 Unauthorized`, et le bloc Curl ne contient aucune ligne `Authorization`. Que s'est-il passé, et que faut-il faire ?
 
-> **Réponse :** _(écris ta réponse ici)_
-
+> **Réponse :** il ne doit pas y avoir la partie du token dans /me
 ---
 
 # Partie B - Dans le projet (45 min - 30 pts)
@@ -367,10 +383,41 @@ const challenges: Challenge[] = [
 - `GET /challenges/:id` → **200** avec le défi, **404** `{ "error": "Challenge not found" }` s'il n'existe pas, **400** si l'id n'est pas un entier positif (utilise `parseIdParam`).
 
 ```ts
-// recopie ton code ici
+app.get("/challenges", (req, res) => {
+  res.json(challenges);
+});
+
+app.get("/challenges/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const challenge = challenges.find(c => c.id === id);
+  if (!challenge) {
+    res.status(404).json({ error: "Challenge not found" });
+    return;
+  }
+  res.json(challenge);
+});
+
 ```
 
-Tests :
+Tests : 1. [{"id":1,"title":"Se déplacer à vélo","category":"carbone","points":10},{"id":2,"titl       e":"Repas 100 % végétarien","category":"alimentation","points":10},{"id":3,"title":"F       aire un trajet en covoiturage","category":"carbone","points":20}]
+
+2. [{"id":1,"title":"Se déplacer à vélo","category":"carbone","points":10},{"id":2,"title":"Repas 100 % végétarien","category":"alimentation","points":10},{"id":3,"title":"Faire un trajet en covoiturage","category":"carbone","points":20}]
+
+3. {"id":3,"title":"Faire un trajet en covoiturage","category":"carbone","points":20}
+
+4. app.get("/challenges/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const challenge = challenges.find(c => c.id === id);
+  if (!challenge) {
+    res.status(404).json({ error: "Challenge not found" });
+    return;
+  }
+  if (challenge.points < 0) {
+    id = await res.set("parseIdParam");
+    return;
+  }
+  res.json(challenge);
+});
 
 ```bash
 curl http://localhost:3000/challenges
