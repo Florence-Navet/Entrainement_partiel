@@ -58,30 +58,25 @@ Le défi n°3 existe. Les ids sont des entiers positifs. Donne le code.
 
 | # | Requête | Code |
 | --- | --- | --- |
-| 1 | `GET /challenges?category=sport` (aucun défi sport) | |
-| 2 | `GET /challenges/abc` | |
-| 3 | `GET /challenges/999` | |
-| 4 | `DELETE /challenges` (la route n'existe qu'en `GET`) | |
-| 5 | `POST /challenges/3/complete` sans jeton | |
-| 6 | `POST /challenges/3/complete` avec jeton, 2e fois aujourd'hui | |
-| 7 | `DELETE /notes/1` réussi, rien à renvoyer | |
-| 8 | `POST /users` réussi | |
+| 1 | `GET /challenges?category=sport` (aucun défi sport) |404 |
+| 2 | `GET /challenges/abc` |400 |
+| 3 | `GET /challenges/999` |404 |
+| 4 | `DELETE /challenges` (la route n'existe qu'en `GET`) |405 |
+| 5 | `POST /challenges/3/complete` sans jeton | 201|
+| 6 | `POST /challenges/3/complete` avec jeton, 2e fois aujourd'hui |200 |
+| 7 | `DELETE /notes/1` réussi, rien à renvoyer | 204|
+| 8 | `POST /users` réussi | 201|
 
 **Q1.2 (QCU, 1 pt) `[CP3]`**
 Quelle est la différence entre 401 et 409 ?
 
 - a) 401 : pas connecté ; 409 : connecté, mais l'action contredit l'état actuel
-- b) 401 : la ressource n'existe pas ; 409 : le serveur a planté
-- c) ce sont deux noms pour la même erreur
-- d) 401 : trop de requêtes ; 409 : mauvais verbe
 
 **Q1.3 (QCU, 1 pt) `[CP3]`**
 Une recherche ne trouve aucun résultat. Le client reçoit :
 
 - a) 404, car il n'y a rien
-- b) 200, avec une liste vide `[]`
-- c) 400, car la demande est fausse
-- d) 204, sans corps
+
 
 ---
 
@@ -102,7 +97,16 @@ Une recherche ne trouve aucun résultat. Le client reçoit :
 **Indice :** c'est la même forme que tes vigiles : le cas qui s'arrête d'abord, avec `return`, puis la suite.
 
 ```ts
-// écris ton code ici
+
+app.get("/challenges", (req, res) => {
+  const category = req.query.category;
+
+  if (category) {
+     res.json(challenges.filter((challenge) => challenge.category === category));
+     return;
+  }
+
+res.json(challenges);
 ```
 
 **Test :**
@@ -124,7 +128,17 @@ Attendu : les défis 1 et 3 ; puis `[]` ; puis les trois défis.
 **Étape 2.** Dans la route, supprime la ligne `const id = parseInt(...)`, et cherche le défi avec **`res.locals.id`**, l'id rangé par le vigile.
 
 ```ts
-// écris ton code ici
+app.get("/challenges/:id", parseIdParam, (req, res) => {
+const response = res.locals.id;
+  const challenge = challenges.find(c => c.id === response);
+  if (!challenge) {
+    res.status(404).json({ error: "Challenge not found" });
+    return;
+  }
+
+  res.json(challenge);
+});
+
 ```
 
 **Test :**

@@ -30,6 +30,7 @@ const challenges: Challenge[] = [
   { id: 3, title: "Faire un trajet en covoiturage", category: "carbone", points: 20 },
 ];
 
+
 const notes: { id: number; text: string }[] = [];
 
 const NoteSchema = z.object({
@@ -267,17 +268,31 @@ app.post("/announcement", async (req, res) => {
 });
 
 app.get("/challenges", (req, res) => {
-  res.json(challenges);
+  const category = req.query.category;
+
+  if (category) {
+     res.json(challenges.filter((challenge) => challenge.category === category));
+     return;
+  }
+
+res.json(challenges);
+
+
 });
 
 
-app.get("/challenges/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const challenge = challenges.find(c => c.id === id);
+
+
+
+
+app.get("/challenges/:id", parseIdParam, (req, res) => {
+const response = res.locals.id;
+  const challenge = challenges.find(c => c.id === response);
   if (!challenge) {
     res.status(404).json({ error: "Challenge not found" });
     return;
   }
+
   res.json(challenge);
 });
 
