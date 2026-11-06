@@ -303,17 +303,17 @@ app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res)
   const today = new Date().toISOString().slice(0, 10);
   const key = `completed:${userId}:${challenge.id}:${today}`;
   console.log(key);
- const totalPoints = await redis.incrby(`points:${userId}`, challenge.points);
-
+  
   const alreadyDone = await redis.get(key);
   if (alreadyDone) {
     res.status(409).json({ error: "Challenge already completed today" });
     return;
   }
   await redis.set(key, "done", "EX", 86400); 
+  const totalPoints = await redis.incrby(`points:${userId}`, challenge.points);
+  
+  res.status(201).json({challengeId: challenge.id, points: challenge.points, totalPoints});
 
-
-res.status(201).json({challengeId: challenge.id, points: challenge.points, totalPoints});
 });
 
 

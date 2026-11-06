@@ -44,7 +44,31 @@ Déroule la méthode **dans l'ordre** : connectée ? → bien écrite ? → exis
 **Indice :** plusieurs vigiles se suivent, séparés par des virgules, entre l'adresse et la fonction.
 
 ```ts
-// écris ton code ici
+app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res) => {
+
+  const challenge = challenges.find(c => c.id === res.locals.id);
+  if (!challenge) {
+    res.status(404).json({ error: "Challenge not found" });
+    return;
+  }
+
+  const userId = res.locals.user.sub;
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `completed:${userId}:${challenge.id}:${today}`;
+  console.log(key);
+ const totalPoints = await redis.incrby(`points:${userId}`, challenge.points);
+
+  const alreadyDone = await redis.get(key);
+  if (alreadyDone) {
+    res.status(409).json({ error: "Challenge already completed today" });
+    return;
+  }
+  await redis.set(key, "done", "EX", 86400); 
+
+
+res.status(201).json({challengeId: challenge.id, points: challenge.points, totalPoints});
+});
+
 ```
 
 **Test :**
