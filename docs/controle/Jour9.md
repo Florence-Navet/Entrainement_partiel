@@ -14,11 +14,11 @@ Déroule la méthode **dans l'ordre** : connectée ? → bien écrite ? → exis
 
 | # | Requête | Code |
 | --- | --- | --- |
-| 1 | `GET /challenges?category=sport` (aucun défi sport) | |
-| 2 | `POST /challenges/3/complete` **sans** jeton | |
-| 3 | `POST /challenges/abc/complete` avec jeton | |
-| 4 | `POST /challenges/999/complete` avec jeton | |
-| 5 | `POST /challenges/3/complete` avec jeton, **2e fois** aujourd'hui | |
+| 1 | `GET /challenges?category=sport` (aucun défi sport) |200 |
+| 2 | `POST /challenges/3/complete` **sans** jeton |401 |
+| 3 | `POST /challenges/abc/complete` avec jeton |204 |
+| 4 | `POST /challenges/999/complete` avec jeton |404 |
+| 5 | `POST /challenges/3/complete` avec jeton, **2e fois** aujourd'hui | 409|
 
 ---
 

@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import YAML from "yaml";
 import swaggerUi from "swagger-ui-express";
+import { id, is } from "zod/v4/locales";
 
 
 const app = express();
@@ -229,19 +230,17 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     });
 
 
+
         app.get("/visits", async (req, res) => {
-
-   
-
       const visits = await redis.incr("visits");
-
-
       for (let i = 0; i < visits; i++) {
         console.log(`Visit number: ${i}`);
       }
 
       res.json({ message: "merci pour les visites", visits })
     });
+
+
 
     app.get("/announcement", async (req, res) => {
       const text = await redis.get("announcement");
@@ -281,10 +280,6 @@ res.json(challenges);
 });
 
 
-
-
-
-
 app.get("/challenges/:id", parseIdParam, (req, res) => {
 const response = res.locals.id;
   const challenge = challenges.find(c => c.id === response);
@@ -296,6 +291,30 @@ const response = res.locals.id;
   res.json(challenge);
 });
 
+app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res) => {
+
+  const challenge = challenges.find(c => c.id === res.locals.id);
+  if (!challenge) {
+    res.status(404).json({ error: "Challenge not found" });
+    return;
+  }
+
+  const userId = res.locals.user.sub;
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `completed:${userId}:${challenge.id}:${today}`;
+  console.log(key);
+ const totalPoints = await redis.incrby(`points:${userId}`, challenge.points);
+
+  const alreadyDone = await redis.get(key);
+  if (alreadyDone) {
+    res.status(409).json({ error: "Challenge already completed today" });
+    return;
+  }
+  await redis.set(key, "done", "EX", 86400); 
+
+
+res.status(201).json({challengeId: challenge.id, points: challenge.points, totalPoints});
+});
 
 
 
