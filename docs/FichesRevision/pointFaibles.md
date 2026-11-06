@@ -131,3 +131,19 @@
 - **Bloquée plus de 3 minutes** sur une question papier, **10 minutes** sur une question de code : je passe à la suivante.
 - **Partie B : j'écris d'abord la forme de chaque route** (verbe, adresse, vigiles, 404, réponse). Même incomplète, elle rapporte des points.
 - **Je pars de ce que j'ai déjà écrit** : `requireAuth`, `parseIdParam`, le cache de `/notes`, l'annonce de 30 secondes, `limitLogin`.
+
+#aller dans la console redis
+```docker compose exec redis redis-cli```
+
+puis faire  
+
+```KEYS completed:*```  
+  
+puis  
+
+  
+
+```DEL completed:1:3:2026-11-06
+DEL completed:1:1:2026-11-06
+DEL points:1```
+

@@ -229,6 +229,15 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
       res.json({ message: response, user: res.locals.user });
     });
 
+    app.get("/me/points", requireAuth,async(req, res) => {
+      const userId = res.locals.user.sub;
+
+      const key = `points:${userId}`;
+      const stored = await redis.get(key);
+      console.log(stored);
+        res.status(200).json({"totalPoints": Number(stored ?? 0)});
+    });
+
 
 
         app.get("/visits", async (req, res) => {
@@ -266,16 +275,25 @@ app.post("/announcement", async (req, res) => {
  
 });
 
-app.get("/challenges", (req, res) => {
+app.get("/challenges", async (req, res) => {
   const category = req.query.category;
 
   if (category) {
-     res.json(challenges.filter((challenge) => challenge.category === category));
-     return;
+    res.json(challenges.filter((challenge) => challenge.category === category));
+    return;
   }
+      const cached = await redis.get("cache:challenges");
+    if (cached) {
+      res.set("X-Cache", "HIT");
+      res.json({message:"la liste des challenges est:", challenges: JSON.parse(cached)});
+      return;
+    }
+  res.set("X-Cache", "MISS");
+  await redis.set("cache:challenges", JSON.stringify(challenges), "EX", 60);
 
-res.json(challenges);
+  const response = "la liste des challenges est:";
 
+  res.json({message: response, challenges});
 
 });
 

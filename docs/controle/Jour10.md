@@ -12,17 +12,14 @@
 **Q0.1 (QCU, 1 pt) `[CP3]`**
 `GET /challenges/abc` répond :
 
-- a) 204
+
 - b) 400
-- c) 404
-- d) 405
+
 
 **Q0.2 (QCU, 1 pt) `[CP3]`**
 Dans une route qui valide un défi, dans quel ordre écrit-on les choses ?
 
-- a) d'abord ajouter les points, puis vérifier le 409
-- b) d'abord toutes les vérifications (401, 400, 404, 409), puis les écritures dans Redis
-- c) l'ordre n'a pas d'importance
+
 - d) d'abord la réponse 201, puis les vérifications
 
 **Q0.3 (QCU, 1 pt) `[CP8]`**
@@ -33,21 +30,21 @@ On relit avec `redis.get` une liste rangée avec `JSON.stringify`. Pour retrouve
 - c) `Number(cached)`
 - d) rien, c'est déjà une liste
 
+pour info j 'aimerai savoir ce la difference des quatre lignes aucune idee
+
 **Q0.4 (QCU, 1 pt) `[CP8]`**
 `redis.get("points:1")` renvoie le total de points. De quel type est la valeur renvoyée ?
 
-- a) un nombre
+
 - b) un texte, ou `null` si la clé n'existe pas
-- c) une liste
-- d) toujours `0`
+-
 
 **Q0.5 (QCU, 1 pt) `[CP3]`**
 Quelle ligne ajoute l'en-tête `X-Cache: HIT` à la réponse ?
 
-- a) `redis.set("X-Cache", "HIT")`
+
 - b) `res.set("X-Cache", "HIT")`
-- c) `res.json({ "X-Cache": "HIT" })`
-- d) `req.set("X-Cache", "HIT")`
+- 
 
 ---
 
@@ -67,7 +64,9 @@ Quelle ligne ajoute l'en-tête `X-Cache: HIT` à la réponse ?
 **Indice :** même forme que ta route `/me`, avec `async` en plus.
 
 ```ts
-// écris ton code ici
+  app.get("/me/points", requireAuth,async(req, res) => {
+        res.status(200).json({"totalpoints": 0});
+    });
 ```
 
 **Test :**
@@ -90,7 +89,14 @@ Ajoute un `console.log(stored);` pour voir ce que Redis renvoie.
 **Indice :** c'est la même clé que celle de ton `incrby`, dans `POST /challenges/:id/complete`.
 
 ```ts
-// écris ton code ici
+    app.get("/me/points", requireAuth,async(req, res) => {
+      const userId = res.locals.user.sub;
+
+      const key = `points:${userId}`;
+      const stored = await redis.get(key);
+      console.log(stored);
+        res.status(200).json({"totalpoints": 0});
+    });
 ```
 
 **Test :** valide un ou deux défis, puis appelle `/me/points`. Dans le terminal de `npm run dev`, tu dois voir `30` (ou ton total). Avec un compte qui n'a rien validé, tu verras `null`.
@@ -109,7 +115,14 @@ Number(stored ?? 0)
 - `Number(...)` : transforme le texte `"30"` en nombre `30`.
 
 ```ts
-// écris ton code ici
+    app.get("/me/points", requireAuth,async(req, res) => {
+      const userId = res.locals.user.sub;
+
+      const key = `points:${userId}`;
+      const stored = await redis.get(key);
+      console.log(stored);
+        res.status(200).json({"totalPoints": Number(stored ?? 0)});
+    });
 ```
 
 **Test :**
@@ -144,7 +157,20 @@ Ajoute `async` devant `(req, res)` dans ta route `GET /challenges`. Ne change ri
   - `return`.
 
 ```ts
-// écris ton code ici
+// écris ton code icapp.get("/challenges", async (req, res) => {
+  const category = req.query.category;
+
+  if (category) {
+    const cached = await redis.get("cache:challenges");
+    if (cached) {
+      res.set("X-Cache", "HIT");
+      res.json({message:"la liste des challenges est:", challenges: JSON.parse(cached)});
+      return;
+    }
+
+    res.json(challenges.filter((challenge) => challenge.category === category));
+    return;
+  }
 ```
 
 ### Étape 3 - Le MISS (4 pts)
@@ -154,7 +180,31 @@ Juste avant le `res.json(challenges)` de la fin :
 - ajoute l'en-tête `X-Cache: MISS`.
 
 ```ts
-// écris ton code ici
+app.get("/challenges", async (req, res) => {
+  const category = req.query.category;
+
+  if (category) {
+    const cached = await redis.get("cache:challenges");
+    if (cached) {
+      res.set("X-Cache", "HIT");
+      res.json({message:"la liste des challenges est:", challenges: JSON.parse(cached)});
+      return;
+    }
+
+    res.json(challenges.filter((challenge) => challenge.category === category));
+    return;
+  }
+  
+
+
+res.set("X-Cache", "MISS");
+await redis.set("cache:challenges", JSON.stringify(challenges), "EX", 60);
+
+const response = "la liste des challenges est:";
+
+res.json({message: response, challenges});
+
+});
 ```
 
 **Test :**
