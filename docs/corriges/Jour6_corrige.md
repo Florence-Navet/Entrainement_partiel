@@ -73,6 +73,10 @@
 const limitLogin = async (req: Request, res: Response, next: NextFunction) => {
   const key = "ratelimit:login";
   const count = await redis.incr(key);
+  	if(count === 1) {
+		await redis.expire(key, 60);
+	}
+
   if (count > 5) {
     res.status(429).json({ error: "Too many requests" });
     return;

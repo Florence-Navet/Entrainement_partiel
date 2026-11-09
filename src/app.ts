@@ -188,13 +188,17 @@ app.post("/login", limitLogin, async (req, res) => {
 
 
 app.post("/users", async (req, res) => {
-  const user = {
-    id: users.length + 1,
-    email: req.body.email,
-    passwordHash: await bcrypt.hash(req.body.password, 10),
+  const result = RegisterSchema.safeParse(req.body);
+  if(!result.success) {
+    res.status(400).json({errors: result.error.issues});
+    return;
   };
 
-  type User = { id: number; email: string; passwordHash: string };
+  const user = {
+    id: users.length + 1,
+    email: result.data.email,
+    passwordHash: await bcrypt.hash(result.data.password, 10),
+  };
 
   users.push(user);
 
