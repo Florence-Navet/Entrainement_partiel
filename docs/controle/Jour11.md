@@ -12,42 +12,35 @@
 **Q0.1 (QCU, 1 pt) `[CP8]`**
 Pour **ranger** une liste dans Redis, on utilise :
 
-- a) `JSON.parse(liste)`
+
 - b) `JSON.stringify(liste)`
-- c) `Number(liste)`
-- d) rien, Redis range les listes telles quelles
+-
 
 **Q0.2 (QCU, 1 pt) `[CP3]`**
 Dans une route, quel est le bon ordre ?
 
 - a) écrire dans Redis, vérifier, répondre
-- b) répondre, vérifier, écrire dans Redis
-- c) vérifier, écrire dans Redis, répondre
-- d) l'ordre n'a pas d'importance
+
 
 **Q0.3 (QCU, 1 pt) `[CP3]`**
 Swagger n'affiche pas une route qui existe pourtant dans `app.ts`. Pourquoi ?
 
 - a) la route n'est pas dans `openapi.yaml`
-- b) la route n'a pas de vigile
-- c) Swagger ne montre que les `GET`
-- d) il faut redémarrer Docker
+
 
 **Q0.4 (QCU, 1 pt) `[CP3]`**
 Dans OpenAPI, comment écrit-on la route Express `/challenges/:id/complete` ?
 
 - a) `/challenges/:id/complete`
-- b) `/challenges/{id}/complete`
-- c) `/challenges/id/complete`
-- d) `/challenges/$id/complete`
+
 
 **Q0.5 (QCU, 1 pt) `[CP3]`**
 Dans Swagger, une route protégée répond 401, et le bloc Curl n'a pas de ligne `Authorization`. Que faut-il faire ?
 
-- a) écrire `Bearer` dans le corps de la requête
+
 - b) se connecter avec `/login`, puis coller le jeton dans **Authorize**
-- c) supprimer `security` dans `openapi.yaml`
-- d) redémarrer le serveur
+
+
 
 ---
 
@@ -68,7 +61,48 @@ Sous `paths:`, après ta route `/me`, ajoute :
 **Indice :** regarde comment est écrite ta route `/me` : le chemin, puis le verbe, puis `summary`, puis `responses`.
 
 ```yaml
-# écris ton bloc ici
+  /challenges:
+    post:
+      summary: Créer un nouveau challenge
+      security:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+                title:
+                  type: string
+                  example: Se déplacer à vélo
+                category:
+                  type: string
+                  example: carbone
+                points:
+                  type: number
+                  example: 10
+      responses:
+        "201":
+          description: Challenge créé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Challenge créé avec succès
+
+
 ```
 
 **Test :** recharge Swagger. La route `POST /challenges/{id}/complete` doit apparaître.
@@ -97,11 +131,58 @@ Swagger doit savoir que `{id}` est un nombre à remplir. Sous `post:`, au même 
 
 Sous `responses:`, à côté de `"201"`, ajoute les trois autres codes que peut renvoyer ta route, chacun avec une `description` :
 
-- `"401"` : ?
-- `"404"` : ?
-- `"409"` : ?
+- `"401"` : ? invalid token     
+
+```yaml
+        "401":
+          description: Requête invalide
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid token
+```
+- `"404"` : ? challenge not found
+```yaml
+          "404":
+           description: Requête invalide
+           content:
+             application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: challenge not found
+```
+- `"409"` : ? too many requests
+```yaml
+             "409":
+               description: Conflit
+               content:
+                 application/json:
+                   schema:
+                     type: object
+                     properties:
+                       error:
+                         type: string
+                         example: too many requests
+```
 
 **Indice :** relis ta route `POST /challenges/:id/complete` dans `app.ts`, de haut en bas. Chaque `res.status(...)` correspond à une réponse à documenter. Et le 400 de `parseIdParam` ? Tu peux l'ajouter aussi, en bonus.
+
+```ts
+app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res) => {
+
+  const challenge = challenges.find(c => c.id === res.locals.id);
+  if (!challenge) {
+    res.status(404).json({ error: "Challenge not found" });
+    return;
+  }
+```
 
 ### Étape 4 - Le cadenas (2 pts)
 
@@ -110,6 +191,14 @@ La route est protégée par `requireAuth`. Sous `post:`, au même niveau que `su
 ```yaml
       security:
         - bearerAuth: []
+```
+
+````yaml
+  /challenges:
+    post:
+      summary: Créer un nouveau challenge
+      security:
+      - bearerAuth: []
 ```
 
 **Indice :** c'est exactement ce que tu as écrit pour `/me`.
@@ -128,7 +217,196 @@ Tout dans le navigateur :
 Si tu as déjà validé le défi 2 aujourd'hui, choisis un autre défi, ou supprime les clés `completed:*` dans la console Redis.
 
 ```yaml
-# recopie ici ton bloc complet
+openapi: 3.0.3
+info:
+  title: API d'entraînement - Partiel
+  version: 1.0.0
+paths:
+  /ping:
+    get:
+      summary: Vérifier que l'API répond
+      responses:
+        "200":
+          description: L'API répond pong
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: pong
+  /users:
+    post:
+      summary: Créer un compte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: testeur@partiel.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        "201":
+          description: Compte créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  email:
+                    type: string
+                    example: testeur@partiel.com
+        "400":
+          description: Données invalides
+  /login:
+    post:
+      summary: Se connecter à l'API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        "200":
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: connected
+        "401":
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid credentials
+        "429":
+          description: Trop de tentatives de connexion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Too many login attempts
+  /me:
+    get:
+      summary: Voir l'utilisateur connecté
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: L'utilisateur lu dans le jeton
+        "401":
+          description: Jeton absent ou invalide
+
+  /challenges:
+    post:
+      summary: Créer un nouveau challenge
+      security:
+      - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+                title:
+                  type: string
+                  example: Se déplacer à vélo
+                category:
+                  type: string
+                  example: carbone
+                points:
+                  type: number
+                  example: 10
+      responses:
+        "201":
+          description: Challenge créé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Challenge créé avec succès
+        "401":
+          description: Requête invalide
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid token
+
+          "404":
+           description: Requête invalide
+           content:
+             application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: challenge not found
+             "409":
+               description: Conflit
+               content:
+                 application/json:
+                   schema:
+                     type: object
+                     properties:
+                       error:
+                         type: string
+                         example: too many requests
+
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+ 
 ```
 
 ---
@@ -138,7 +416,25 @@ Si tu as déjà validé le défi 2 aujourd'hui, choisis un autre défi, ou suppr
 Ajoute la route `/me/points` : verbe `get:`, un `summary`, le cadenas, et les réponses `"200"` (le total de points) et `"401"`.
 
 ```yaml
-# écris ton bloc ici
+ /me/points:
+    get:
+      summary: Voir le nombre de points de l'utilisateur connecté
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Le nombre de points de l'utilisateur connecté
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalPoints:
+                    type: integer
+                    example: 42
+        "401":
+          description: Jeton absent ou invalide
+
 ```
 
 ---

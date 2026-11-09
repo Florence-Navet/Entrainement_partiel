@@ -106,8 +106,88 @@ paths:
           description: L'utilisateur lu dans le jeton
         "401":
           description: Jeton absent ou invalide
+
+  /me/points:
+    get:
+      summary: Voir le nombre de points de l'utilisateur connecté
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Le nombre de points de l'utilisateur connecté
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalPoints:
+                    type: integer
+                    example: 42
+        "401":
+          description: Jeton absent ou invalide
+
+  /challenges:
+    post:
+      summary: Créer un nouveau défi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: Faire une randonnée
+                category:
+                  type: string
+                  example: carbone
+                points:
+                  type: number
+                  example: 30
+      responses:
+        "201":
+          description: Défi créé
+        "400":
+          description: Données invalides
+  /challenges/{id}/complete:
+    post:
+      summary: Valider un défi pour aujourd'hui
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Défi validé, points ajoutés
+        "400":
+          description: Id invalide
+        "401":
+          description: Jeton absent ou invalide
+        "404":
+          description: Défi introuvable
+        "409":
+          description: Défi déjà validé aujourd'hui
+  /me/points:
+    get:
+      summary: Voir mon total de points
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Le total de points de l'utilisatrice connectée
+        "401":
+          description: Jeton absent ou invalide
+
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
+
+ 

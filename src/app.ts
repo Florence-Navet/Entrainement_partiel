@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import YAML from "yaml";
 import swaggerUi from "swagger-ui-express";
-import { id, is } from "zod/v4/locales";
+
 
 
 const app = express();
@@ -31,7 +31,11 @@ const challenges: Challenge[] = [
   { id: 3, title: "Faire un trajet en covoiturage", category: "carbone", points: 20 },
 ];
 
-
+const ChallengeSchema = z.object({
+  title: z.string().min(1),
+  category: z.string().min(1),
+  points: z.number().positive(),
+});
 const notes: { id: number; text: string }[] = [];
 
 const NoteSchema = z.object({
@@ -313,11 +317,32 @@ const response = res.locals.id;
   res.json(challenge);
 });
 
+app.post("/challenges", async (req, res) => {
+
+  const result = ChallengeSchema.safeParse(req.body);
+  if (!result.success) {
+    res.status(400).json({errors:result.error.issues});
+    return;
+  }
+
+  const challenge = {
+  id: challenges.length + 1,
+  title: result.data.title,
+  category: result.data.category,
+  points: result.data.points
+  }
+  challenges.push(challenge);
+    await redis.del("cache:challenges");
+  res.status(201).json({ message: "Challenge created", challenge });
+});
+
 app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res) => {
 
   const challenge = challenges.find(c => c.id === res.locals.id);
+  
   if (!challenge) {
     res.status(404).json({ error: "Challenge not found" });
+
     return;
   }
 
