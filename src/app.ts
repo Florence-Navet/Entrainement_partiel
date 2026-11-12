@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import YAML from "yaml";
 import swaggerUi from "swagger-ui-express";
+import { id } from "zod/v4/locales";
 
 
 
@@ -391,9 +392,18 @@ app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res)
 });
 
 app.get("/leaderboard", async(req, res) => {
-  const raw = await redis.zrevrange("leaderboard",0 , 2,"WITHSCORES");
-  console.log(raw);
+  const limit = Number(req.query.limit ?? 3);
+ ;
 
+
+  console.log(limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+      res.status(400).json({ error: "limit must be between 1 and 10" });
+    return;
+  }
+
+ const raw = await redis.zrevrange("leaderboard",0 , limit - 1,"WITHSCORES")
+  console.log(raw);
   const ranking = [];
   for (let i = 0; i< raw.length; i = i+2) {
     ranking.push({userId: raw[i], points: Number(raw[i+1])});

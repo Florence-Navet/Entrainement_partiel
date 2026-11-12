@@ -200,23 +200,19 @@ paths:
           description: Jeton absent ou invalide
   /leaderboard:
     get:
-      summary: Voir le classement des 3 meilleures utilisatrices
+      summary: Voir le classement des meilleures utilisatrices
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 3
       responses:
         "200":
-          description: Les 3 utilisatrices avec le plus de points, de la première à la troisième
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    userId:
-                      type: string
-                      example: "1"
-                    points:
-                      type: integer
-                      example: 30
+          description: Les utilisatrices avec le plus de points, de la première à la dernière
+        "400":
+          description: limit doit être un entier entre 1 et 10
 
 
 components:

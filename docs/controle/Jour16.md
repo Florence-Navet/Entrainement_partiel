@@ -11,31 +11,26 @@
 
 **Q0.1 (QCU, 1 pt)** Dans une route, où se place la réponse `res.status(200).json(liste)` quand une boucle `for` fabrique la liste ?
 
-- a) à l'intérieur de la boucle, pour répondre à chaque tour
+
 - b) après l'accolade qui ferme la boucle, une seule fois
-- c) avant la boucle
-- d) n'importe où
+
 
 **Q0.2 (QCU, 1 pt)** Une route **sans vigile** se documente :
 
-- a) avec `security: - bearerAuth: []` et une réponse 401
+
 - b) sans `security`, et sans réponse 401
-- c) avec `security`, mais sans 401
-- d) avec une réponse 401, mais sans `security`
+
+
 
 **Q0.3 (QCU, 1 pt)** Dans `GET /leaderboard?limit=5`, comment lit-on `5` ?
 
-- a) `req.params.limit`
-- b) `req.body.limit`
-- c) `req.query.limit`
-- d) `req.headers.limit`
+- a) `req.query.limit`
+
 
 **Q0.4 (QCU, 1 pt)** Quelle affirmation est **fausse** ?
 
-- a) `req.query.limit` est toujours un texte (ou `undefined`)
-- b) `Number("5")` donne le nombre 5
-- c) `req.query.limit` est directement un nombre
-- d) `Number("abc")` ne donne pas un vrai nombre
+-C) req.query.limit n’est pas directement un nombre. C’est pour ça que tu as écrit Number(...) dans ta route.
+
 
 ---
 
@@ -56,13 +51,14 @@ app.get("/leaderboard", requireAuth, async (req, res) => {
 
 Le classement doit être **public**, renvoyer les 3 premières **avec leurs points en nombre**. Trouve les **quatre** erreurs.
 
-> **Erreur 1 :** _(écris ta réponse ici)_
+> **Erreur 1 :** for (let i = 0; i < raw.length; i = i + 2)
 >
-> **Erreur 2 :** _(écris ta réponse ici)_
+> **Erreur 2 :** ranking.push({ userId: raw[i], points: Number(raw[i + 1]) });
 >
-> **Erreur 3 :** _(écris ta réponse ici)_
+> **Erreur 3 :** res.status(200).res.json(ranking); à mettre
+ en dehors de la boucle
 >
-> **Erreur 4 :** _(écris ta réponse ici)_
+> **Erreur 4 :** const raw = await redis.zrevrange("leaderboard", 0, 2, "WITHSCORES");
 
 **Indice :** regarde le vigile, les arguments de `zrevrange`, la boucle (son pas, et ce qu'il y a dedans), et le type des points.
 
@@ -90,6 +86,22 @@ Au début de la route, lis `req.query.limit`, transforme-le en nombre, et mets *
 const limit = Number(req.query.limit ?? 3);
 ```
 
+```ts
+app.get("/leaderboard", async(req, res) => {
+  const limit = Number(req.query.limit ?? 3);
+  const raw = await redis.zrevrange("leaderboard",0 , 2,"WITHSCORES");
+  console.log(raw);
+  console.log(limit);
+
+  const ranking = [];
+  for (let i = 0; i< raw.length; i = i+2) {
+    ranking.push({userId: raw[i], points: Number(raw[i+1])});
+
+  }
+    res.status(200).json({message: "rang", ranking});
+});
+```
+
 - `req.query.limit ?? 3` : la valeur envoyée, **sinon** 3 ;
 - `Number(...)` : `"5"` devient `5`.
 
@@ -102,7 +114,26 @@ Si `limit` n'est **pas un entier**, ou s'il est **plus petit que 1**, ou **plus 
 **Indice :** c'est la même condition que ton vigile `parseIdParam`, avec une borne en plus. Rappel : `||` veut dire « ou ».
 
 ```ts
-// écris ton code ici
+app.get("/leaderboard", async(req, res) => {
+  const limit = Number(req.query.limit ?? 3);
+ ;
+
+
+  console.log(limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+      res.status(400).json({ error: "limit must be between 1 and 10" });
+    return;
+  }
+
+ const raw = await redis.zrevrange("leaderboard",0 , limit - 1,"WITHSCORES")
+  console.log(raw);
+  const ranking = [];
+  for (let i = 0; i< raw.length; i = i+2) {
+    ranking.push({userId: raw[i], points: Number(raw[i+1])});
+
+  }
+    res.status(200).json({message: "rang", ranking});
+});
 ```
 
 ### Étape 4 - Utiliser la limite (2 pts)
@@ -110,7 +141,26 @@ Si `limit` n'est **pas un entier**, ou s'il est **plus petit que 1**, ou **plus 
 Dans `zrevrange`, la fin n'est plus `2`. Pour obtenir `limit` utilisatrices, les positions vont de `0` à `limit - 1`.
 
 ```ts
-// écris ta route complète ici
+app.get("/leaderboard", async(req, res) => {
+  const limit = Number(req.query.limit ?? 3);
+ ;
+
+
+  console.log(limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+      res.status(400).json({ error: "limit must be between 1 and 10" });
+    return;
+  }
+
+ const raw = await redis.zrevrange("leaderboard",0 , limit - 1,"WITHSCORES")
+  console.log(raw);
+  const ranking = [];
+  for (let i = 0; i< raw.length; i = i+2) {
+    ranking.push({userId: raw[i], points: Number(raw[i+1])});
+
+  }
+    res.status(200).json({message: "rang", ranking});
+});
 ```
 
 **Tests :**
@@ -148,7 +198,16 @@ Dans ton bloc `/leaderboard:` de `openapi.yaml`, ajoute :
 ```
 
 ```yaml
-# écris ton bloc /leaderboard complet ici
+  /leaderboard:
+    get:
+      summary: Voir le classement des 3 meilleures utilisatrices
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: 
+            type: integer
+            example: 3
 ```
 
 Puis **redémarre** le serveur. Dans Swagger, **Try it out** doit afficher une case `limit`, **facultative**.
