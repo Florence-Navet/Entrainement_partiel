@@ -31,6 +31,11 @@ const challenges: Challenge[] = [
   { id: 3, title: "Faire un trajet en covoiturage", category: "carbone", points: 20 },
 ];
 
+const PointSchema = z.object({
+    points: z.number().positive(),
+
+});
+
 const ChallengeSchema = z.object({
   title: z.string().min(1),
   category: z.string().min(1),
@@ -283,6 +288,27 @@ app.post("/announcement", async (req, res) => {
  
 });
 
+app.patch("/challenges/:id", requireAuth, parseIdParam, async (req, res) => {
+
+  const result = PointSchema.safeParse(req.body);
+  const response = res.locals.id;
+  const challenge = challenges.find((c) => c.id === response);
+  if(!result.success) {
+    res.status(400).json({errors:result.error.issues});
+    return;
+  }
+  if(!challenge) {
+    res.status(404).json({error:"Challenge not found"});
+    return;
+  }
+  challenge.points = result.data.points;
+  await redis.del("cache:challenges");
+
+  // const message = "message ok";
+  res.status(200).json(challenge);
+
+});
+
 app.get("/challenges", async (req, res) => {
   const category = req.query.category;
 
@@ -363,6 +389,20 @@ app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res)
 
 });
 
+app.delete("/challenges/:id", requireAuth, parseIdParam, async (req, res) => {
+
+    const index = challenges.findIndex((c) => c.id === res.locals.id);
+
+    if (index === -1) {
+        res.status(404).json({error:"Challenge not found"});
+        return;
+    }
+    challenges.splice(index, 1);
+    
+    await redis.del("cache:challenges");
+    res.status(204).send();
+
+});
 
 
 app.use((req, res) => {

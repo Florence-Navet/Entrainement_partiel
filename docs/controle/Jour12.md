@@ -22,44 +22,39 @@ L'utilisatrice est connectée, sauf indication contraire. Le défi n°2 existe. 
 
 | # | Requête | Code |
 | --- | --- | --- |
-| 1 | `GET /challenges?category=eau` (aucun défi « eau ») | |
-| 2 | `DELETE /challenges/2` réussi, rien à renvoyer | |
-| 3 | `DELETE /challenges/abc` | |
-| 4 | `DELETE /challenges/999` | |
-| 5 | `DELETE /challenges/2` **sans** jeton | |
-| 6 | `PUT /ping` (la route n'existe qu'en `GET`) | |
+| 1 | `GET /challenges?category=eau` (aucun défi « eau ») | 200 liste vide|
+| 2 | `DELETE /challenges/2` réussi, rien à renvoyer | 204 no content|
+| 3 | `DELETE /challenges/abc` | 400 demande mal écrite|
+| 4 | `DELETE /challenges/999` |404 le defi n'existe pas|
+| 5 | `DELETE /challenges/2` **sans** jeton | 401 pas connecte |
+| 6 | `PUT /ping` (la route n'existe qu'en `GET`) | 405|
 
 **QA.2 (QCU, 1 pt) `[CP3]`**
 Le bon ordre dans une route :
 
-- a) répondre, vérifier, écrire
+
 - b) écrire, vérifier, répondre
-- c) vérifier, écrire, répondre
-- d) vérifier, répondre, écrire
+
 
 **QA.3 (QCU, 1 pt) `[CP8]`**
 Pour relire une liste rangée dans Redis avec `JSON.stringify` :
 
 - a) `JSON.stringify(cached)`
-- b) `JSON.parse(cached)`
-- c) `Number(cached)`
-- d) `res.json(cached)`
+`
 
 **QA.4 (QCU, 1 pt) `[CP8]`**
 `{ expiresIn: "120" }`, avec des guillemets, donne un jeton valable :
 
-- a) 120 secondes
-- b) 120 minutes
+
 - c) 120 millisecondes
-- d) 2 heures
+
 
 **QA.5 (QCU, 1 pt) `[CP3]`**
 Dans OpenAPI, la route Express `/challenges/:id` s'écrit :
 
-- a) `/challenges/:id`
-- b) `/challenges/{id}`
+
 - c) `/challenges/id`
-- d) `/challenges/[id]`
+`
 
 **QA.6 (Lecture de code, 4 pts) `[CP3, CP8]`**
 
@@ -76,13 +71,47 @@ app.delete("/challenges/:id", parseIdParam, async (req, res) => {
 
 `findIndex` renvoie la **position** de l'élément dans la liste, ou `-1` s'il n'existe pas. `splice(index, 1)` retire l'élément à cette position.
 
-a) Ce code a un problème d'**ordre**. Lequel, et que se passe-t-il pour un défi qui n'existe pas ?
-b) Il manque un mot dans le `if`. Lequel ?
+a) Ce code a un problème d'**ordre**. Lequel, et que se passe-t-il pour un défi qui n'existe pas ? le res.status doit est après le ch allenge .splice
+b) Il manque un mot dans le `if`. Lequel ? je c pas
 c) Après la suppression, le cache `cache:challenges` est périmé. Quelle ligne faut-il ajouter, et où ?
 
-> **Réponse a) :** _(écris ta réponse ici)_
+> **Réponse a) :**ts
+
+```ts
+app.delete("/challenges/:id", parseIdParam, async (req, res) => {
+  const index = challenges.findIndex((c) => c.id === res.locals.id);
+
+  if (index === -1) {
+    res.status(404).json({ error: "Challenge not found" });
+  }
+  challenges.splice(index, 1);
+    res.status(204).send();
+});
+```
+
 >
 > **Réponse b) :** _(écris ta réponse ici)_
+
+```ts
+app.delete("/challenges/:id", parseIdParam, async (req, res) => {
+  const index = challenges.findIndex((c) => c.id === res.locals.id);
+  const cached = await redis.get("cached:challenges");
+if (cached) {
+  res.set("X-Cache", "HIT");
+  res.json({message:"la liste des challenges est :", challenges: JSON.parse(cached)});
+
+  
+}
+res.set("X-Cache", "MISS");
+await redis.set("cache:challenge", JSON.stringify(challenges), "EX", 60);
+const response = "la liste des challenges est:";
+  if (index === -1) {
+    res.status(404).json({ error: "Challenge not found" });
+  }
+  challenges.splice(index, 1);
+    res.status(204).send().json({message:response, challenges: challenges});
+});
+```
 >
 > **Réponse c) :** _(écris ta réponse ici)_
 
@@ -90,7 +119,16 @@ c) Après la suppression, le cache `cache:challenges` est périmé. Quelle ligne
 Écris de mémoire le vigile `requireAuth` : 401 `Unauthorized` sans en-tête `Bearer`, 401 `Invalid token` si le jeton est faux, sinon l'utilisatrice dans `res.locals.user` puis `next()`.
 
 ```ts
-// écris ton code ici
+app.delete("/challenges/:id", parseIdParam, async (req, res) => {
+  const index = challenges.findIndex((c) => c.id === res.locals.id);
+  // res.status(204).send();
+  if (index === -1) {
+    res.status(404).json({ error: "Challenge not found" });
+  }
+  challenges.splice(index, 1);
+  await redis.set("cache:challenges", "EX", 60);
+  res.status(204).send();
+});
 ```
 
 ---
@@ -116,7 +154,20 @@ c) Après la suppression, le cache `cache:challenges` est périmé. Quelle ligne
 5. répondre 204 avec `res.status(204).send()` (`send()` sans rien : pas de corps).
 
 ```ts
-// recopie ton code ici
+app.delete("/challenges/:id", requireAuth, parseIdParam, async (req, res) => {
+
+    const index = challenges.findIndex((c) => c.id === res.locals.id);
+
+    if (index === -1) {
+        res.status(404).json({error:"Challenge not found"});
+        return;
+    }
+    challenges.splice(index, 1);
+    
+    await redis.del("cache:challenges");
+    res.status(204).send();
+
+});
 ```
 
 **Tests** (avec un jeton tout neuf) :
