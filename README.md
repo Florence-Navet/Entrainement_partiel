@@ -70,3 +70,42 @@ En cas d'échec, `/hello` renvoie une `500` avec le message d'erreur dans `detai
 | `ECONNREFUSED 127.0.0.1:5432` en `npm run dev`              | Les conteneurs `db` / `redis` ne tournent pas : `docker compose up -d db redis`             |
 | `relation "greetings" does not exist`                       | Le volume existait déjà avant le script d'init : `docker compose down -v` puis relancer    |
 | `password authentication failed`                            | `.env` modifié après la création du volume : `docker compose down -v` puis relancer        |
+
+
+# faire des curl 
+
+1. pour se logguer
+
+```bash
+curl -X POST http://localhost:3000/users -H "Content-Type: application/json" -d '{"email":"lea@ecoda.fr","password":"secret123"}'
+curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"email":"lea@ecoda.fr","password":"secret123"}'
+```
+
+2. creer son token provisoire session
+
+```bash
+TOKEN=""
+```
+
+3. utiliser un post avec token session
+
+```bash
+curl -i -X POST http://localhost:3000/challenges/1/complete -H "Authorization: Bearer $TOKEN"
+```
+
+4. aller dans la console redis
+```bash
+docker compose exec redis redis-cli
+```
+
+
+```redis
+ZREVRANGE leaderboard 0 -1 WITHSCORES
+```
+resultat attendu : 
+SET points:1 10
+
+5. Supprimer une cles
+KEYS completed:*
+puis 
+DEL completed:numero cle
