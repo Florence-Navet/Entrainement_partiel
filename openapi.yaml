@@ -168,10 +168,9 @@ paths:
         "404":
           description: Challenge not found
         "204":
-          description: Defi supprimé
-  /challenge/{id}:
+          description: Defi supprime
     patch:
-      summary: modifier un defi 
+      summary: modifier les points d'un defi
       security:
         - bearerAuth: []
       parameters:
@@ -181,10 +180,14 @@ paths:
           schema:
           type: integer
       responses:
-        "404": 
-          description: Challenge not found
-        "201":
-          description: Challenge modifié
+        "200":
+          description: Défi modifié
+        "400": 
+          description: Id ou points invalides
+        "401":
+          description: Jeton absent ou invalide
+        "404":
+          description: Défi introuvable
   /me/points:
     get:
       summary: Voir mon total de points
