@@ -198,7 +198,25 @@ paths:
           description: Le total de points de l'utilisatrice connectée
         "401":
           description: Jeton absent ou invalide
-
+  /leaderboard:
+    get:
+      summary: Voir le classement des 3 meilleures utilisatrices
+      responses:
+        "200":
+          description: Les 3 utilisatrices avec le plus de points, de la première à la troisième
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                      example: "1"
+                    points:
+                      type: integer
+                      example: 30
 
 
 components:

@@ -384,9 +384,22 @@ app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res)
   }
   await redis.set(key, "done", "EX", 86400); 
   const totalPoints = await redis.incrby(`points:${userId}`, challenge.points);
+  await redis.zincrby("leaderboard", challenge.points, userId);
   
   res.status(201).json({challengeId: challenge.id, points: challenge.points, totalPoints});
 
+});
+
+app.get("/leaderboard", async(req, res) => {
+  const raw = await redis.zrevrange("leaderboard",0 , 2,"WITHSCORES");
+  console.log(raw);
+
+  const ranking = [];
+  for (let i = 0; i< raw.length; i = i+2) {
+    ranking.push({userId: raw[i], points: Number(raw[i+1])});
+
+  }
+    res.status(200).json({message: "rang", ranking});
 });
 
 app.delete("/challenges/:id", requireAuth, parseIdParam, async (req, res) => {
