@@ -84,12 +84,18 @@ curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d 
 2. creer son token provisoire session
 
 ```bash
-TOKEN=""
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ6b2VAZWNvZGEuZnIiLCJpYXQiOjE3OTQ1NjQ0MDgsImV4cCI6MTc5NDU2ODAwOH0.xJZ3sIO63y02lXRKH7gX5H3zm1Zyd8-c3Q30ZY5LLCU"
 ```
 
 3. utiliser un post avec token session
 
 ```bash
+curl -i -X POST http://localhost:3000/challenges/1/complete -H "Authorization: Bearer $TOKEN"
+```
+
+```bash
+curl -i http://localhost:3000/me/rank -H "Authorization: Bearer $TOKEN"
+
 curl -i -X POST http://localhost:3000/challenges/1/complete -H "Authorization: Bearer $TOKEN"
 ```
 

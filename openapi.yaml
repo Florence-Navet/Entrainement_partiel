@@ -163,12 +163,16 @@ paths:
           in: path
           required: true
           schema:
-          type: integer
+            type: integer
       responses:
         "404":
           description: Challenge not found
         "204":
           description: Defi supprime
+        "400":
+          description: Id invalide
+        "401":
+          description: Jeton absent ou invalide
     patch:
       summary: modifier les points d'un defi
       security:
@@ -178,7 +182,17 @@ paths:
           in: path
           required: true
           schema:
-          type: integer
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                points:
+                  type: number
+                  example: 30
       responses:
         "200":
           description: Défi modifié
@@ -198,6 +212,19 @@ paths:
           description: Le total de points de l'utilisatrice connectée
         "401":
           description: Jeton absent ou invalide
+
+  /me/rank:
+    get:
+      summary: Voir mon rang
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Le rang de l'utilisateur connecté
+        "401":
+          description: Jeton absent ou invalide
+        "404":
+          description: L'utilisatrice n'a encore validé aucun défi
   /leaderboard:
     get:
       summary: Voir le classement des meilleures utilisatrices

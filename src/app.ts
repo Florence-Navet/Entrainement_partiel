@@ -8,6 +8,7 @@ import fs from "fs";
 import YAML from "yaml";
 import swaggerUi from "swagger-ui-express";
 import { id } from "zod/v4/locales";
+import { resolve } from "path";
 
 
 
@@ -249,6 +250,7 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
       const key = `points:${userId}`;
       const stored = await redis.get(key);
       console.log(stored);
+      
         res.status(200).json({"totalPoints": Number(stored ?? 0)});
     });
 
@@ -389,6 +391,20 @@ app.post("/challenges/:id/complete", requireAuth, parseIdParam, async (req, res)
   
   res.status(201).json({challengeId: challenge.id, points: challenge.points, totalPoints});
 
+});
+
+app.get("/me/rank", requireAuth, async (req, res) => {
+  const userId = res.locals.user.sub;
+  const position = await redis.zrevrank("leaderboard", userId);
+  console.log(position);
+  if (position === null) {
+    res.status(404).json({ error: "Not in leaderboard" });
+    return;
+  }
+  const score = await redis.zscore("leaderboard", userId);
+  console.log(score);
+  const response = "Message : ok";
+  res.status(200).json({rank: position+1, points: Number(score)});
 });
 
 app.get("/leaderboard", async(req, res) => {
