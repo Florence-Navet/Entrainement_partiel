@@ -54,25 +54,24 @@ docker compose down -v     # supprime conteneurs + volume PostgreSQL
 
 ## Routes
 
-| Route        | Vérifie                                                        |
-|--------------|----------------------------------------------------------------|
-| `GET /`      | L'API Express démarre et répond                                |
+| Route        | Vérifie                                                         |
+| ------------ | --------------------------------------------------------------- |
+| `GET /`      | L'API Express démarre et répond                                 |
 | `GET /hello` | Lecture dans PostgreSQL (table `greetings`) + `INCR` dans Redis |
 
 En cas d'échec, `/hello` renvoie une `500` avec le message d'erreur dans `detail` pour faciliter le diagnostic.
 
 ## Problèmes fréquents
 
-| Symptôme                                                    | Piste                                                                                      |
-|-------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| `Cannot connect to the Docker daemon`                       | Docker Desktop n'est pas lancé                                                             |
-| `port is already allocated` / `EADDRINUSE`                  | Un autre PostgreSQL, Redis ou API tourne déjà sur ce port : arrêtez-le ou changez le port dans `.env` |
-| `ECONNREFUSED 127.0.0.1:5432` en `npm run dev`              | Les conteneurs `db` / `redis` ne tournent pas : `docker compose up -d db redis`             |
-| `relation "greetings" does not exist`                       | Le volume existait déjà avant le script d'init : `docker compose down -v` puis relancer    |
-| `password authentication failed`                            | `.env` modifié après la création du volume : `docker compose down -v` puis relancer        |
+| Symptôme                                       | Piste                                                                                                 |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `Cannot connect to the Docker daemon`          | Docker Desktop n'est pas lancé                                                                        |
+| `port is already allocated` / `EADDRINUSE`     | Un autre PostgreSQL, Redis ou API tourne déjà sur ce port : arrêtez-le ou changez le port dans `.env` |
+| `ECONNREFUSED 127.0.0.1:5432` en `npm run dev` | Les conteneurs `db` / `redis` ne tournent pas : `docker compose up -d db redis`                       |
+| `relation "greetings" does not exist`          | Le volume existait déjà avant le script d'init : `docker compose down -v` puis relancer               |
+| `password authentication failed`               | `.env` modifié après la création du volume : `docker compose down -v` puis relancer                   |
 
-
-# faire des curl 
+# faire des curl
 
 1. pour se logguer
 
@@ -100,18 +99,25 @@ curl -i -X POST http://localhost:3000/challenges/1/complete -H "Authorization: B
 ```
 
 4. aller dans la console redis
+
 ```bash
 docker compose exec redis redis-cli
 ```
 
-
 ```redis
 ZREVRANGE leaderboard 0 -1 WITHSCORES
 ```
-resultat attendu : 
+
+resultat attendu :
 SET points:1 10
 
 5. Supprimer une cles
-KEYS completed:*
-puis 
-DEL completed:numero cle
+   KEYS completed:\*
+   puis
+   DEL completed:numero cle
+
+https://redis.io/docs/latest/commands/ttl/
+
+https://expressjs.com/en/api/
+
+https://github.com/redis/ioredis
